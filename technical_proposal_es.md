@@ -45,7 +45,7 @@ graph TD
     A[Estudiante pregunta en Discord/Zoom/Meet] --> B{Audio de la Clase};
     B --> C[OBS: Composición de Escena];
     C --> D[Entrada de Micrófono Virtual/Físico en la App Asistente];
-    D -- Audio Capturado --> E{Aplicación Asistente IA (Tauri)};
+    D -- Audio Capturado --> E[Aplicación Asistente IA (Tauri)];
     E -- Envía Audio/Texto Procesado --> F[API de OpenAI (Whisper STT, GPT LLM, TTS)];
     F -- Devuelve Audio/Texto de Respuesta --> E;
     E -- Reproduce Audio de Respuesta --> G[Salida de Audio del Sistema];
