@@ -42,27 +42,27 @@ A continuación, se presenta un diagrama de flujo que ilustra el funcionamiento 
 
 ```mermaid
 graph TD
-    A[Estudiante pregunta en Discord/Zoom/Meet] --> B{Audio de la Clase};
-    B --> C[OBS: Composición de Escena];
-    C --> D[Entrada de Micrófono Virtual/Físico en la App Asistente];
-    D -- Audio Capturado --> E[Aplicación Asistente IA (Tauri)];
-    E -- Envía Audio/Texto Procesado --> F[API de OpenAI (Whisper STT, GPT LLM, TTS)];
-    F -- Devuelve Audio/Texto de Respuesta --> E;
-    E -- Reproduce Audio de Respuesta --> G[Salida de Audio del Sistema];
-    G --> C; % La respuesta de IA se reincorpora al stream de OBS
-    C --> H[Estudiantes escuchan respuesta vía transmisión de OBS];
+    A[Estudiante pregunta en Discord/Zoom/Meet] --> B{Audio de la Clase}
+    B --> C[OBS: Composición de Escena]
+    C --> D[Entrada de Micrófono Virtual/Físico en la App Asistente]
+    D -- Audio Capturado --> E[Aplicación Asistente IA Tauri ]
+    E -- Envía Audio/Texto Procesado --> F[API de OpenAI Whisper STT, GPT LLM, TTS]
+    F -- Devuelve Audio/Texto de Respuesta --> E
+    E -- Reproduce Audio de Respuesta --> G[Salida de Audio del Sistema]
+    G --> C[La respuesta de IA se reincorpora al stream de OBS]
+    C --> H[Estudiantes escuchan respuesta vía transmisión de OBS]
 
-    subgraph Aplicación Asistente IA (Tauri)
+    subgraph "Aplicación Asistente IA (Tauri)"
         direction LR
-        I[Interfaz de Usuario (Contexto, Logs, Config.)]
+        I[Interfaz de Usuario Contexto, Logs, Config.]
         J[Módulo de Captura y Reproducción de Audio en Tiempo Real]
         K[Módulo de Interacción con API OpenAI]
         L[Gestor de Estado y Lógica Interna]
     end
-    E --> I;
-    E --> J;
-    E --> K;
-    E --> L;
+    E --> I
+    E --> J
+    E --> K
+    E --> L
 ```
 
 ### Componentes Clave
