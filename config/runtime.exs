@@ -21,20 +21,20 @@ if System.get_env("PHX_SERVER") do
 end
 
 if config_env() == :prod do
-  database_url =
-    System.get_env("DATABASE_URL") ||
-      raise """
-      environment variable DATABASE_URL is missing.
-      For example: ecto://USER:PASS@HOST/DATABASE
-      """
+  # Configure SQLite database path for production
+  database_path =
+    System.get_env("DATABASE_PATH") ||
+      # Default path within the application's priv directory.
+      # Ensure this directory is writable in your production environment.
+      Path.join(Application.app_dir(:nia, "priv/repo"), "nia_prod.sqlite3")
 
-  maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
+  # Ensure the directory for the database file exists
+  database_path |> Path.dirname() |> File.mkdir_p!()
 
   config :nia, Nia.Repo,
-    # ssl: true,
-    url: database_url,
-    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
-    socket_options: maybe_ipv6
+    adapter: Ecto.Adapters.SQLite3,
+    database: database_path,
+    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "5")
 
   # The secret key base is used to sign/encrypt cookies and other secrets.
   # A default value is used in config/dev.exs and config/test.exs but you
