@@ -1,0 +1,36 @@
+<head>
+  <.live_title suffix={" - " <> app_name()}>{title(@conn)}</.live_title>
+  <meta name="csrf-token" content={get_csrf_token()} />
+
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content={description(@conn)} />
+
+  <link rel="icon" href={~p"/images/favicon.png"} />
+  <!-- Open Graph (used by Facebook/Twitter). See layout_view.ex for relevant function -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content={current_page_url(@conn)} />
+  <meta property="og:title" content={title(@conn)} />
+  <meta property="og:description" content={description(@conn)} />
+  <meta property="og:image" content={og_image(@conn)} />
+  <meta property="og:image:width" content={og_image_width(@conn)} />
+  <meta property="og:image:height" content={og_image_height(@conn)} />
+  <meta property="og:image:type" content={og_image_type(@conn)} />
+  <!-- Twitter only -->
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:site" content={twitter_site(@conn)} />
+  <meta name="twitter:creator" content={twitter_creator(@conn)} />
+  <!-- Helps keep 80% of duplicate content errors on Google away by default -->
+  <link rel="canonical" href={@conn.request_path} />
+
+  <link async defer phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
+
+  <script>
+    window.userToken = "<%= @conn.assigns[:user_socket_token] %>";
+  </script>
+  <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}>
+  </script>
+
+  <NiaWeb.ColorSchemeSwitch.color_scheme_switch_js />
+</head>

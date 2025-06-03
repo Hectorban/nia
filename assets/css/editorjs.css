@@ -1,0 +1,229 @@
+/* Content of the first block */
+.prose .ce-block:first-child > .ce-block__content > * {
+  @apply pt-0;
+}
+
+/* Content of the last block */
+.prose .ce-block:last-child > .ce-block__content > * {
+  @apply pb-0;
+}
+
+/* Editor.js Container */
+.codex-editor {
+  @apply dark:bg-gray-800;
+}
+
+/* Increases width of the editor */
+@media (min-width: 651px) {
+  .ce-block__content {
+    max-width: calc(100% - 120px) !important;
+    margin: 0 60px;
+  }
+}
+
+@media (min-width: 651px) {
+  .ce-toolbar__content {
+    width: 0px !important;
+    margin: 0 50px;
+  }
+}
+
+.cdx-block {
+  max-width: 100% !important;
+}
+
+@media (min-width: 651px) {
+  .codex-editor--narrow .ce-toolbox .ce-popover {
+    left: 0;
+    right: 0;
+  }
+}
+
+@media (min-width: 651px) {
+  .codex-editor--narrow .ce-settings .ce-popover {
+    right: 0;
+    left: 0;
+  }
+}
+
+/* Block styles */
+.codex-editor .ce-block {
+  @apply font-normal dark:text-gray-300 dark:selection:bg-blue-300 dark:selection:text-gray-800;
+}
+
+.codex-editor .ce-block--selected .ce-block__content {
+  @apply dark:bg-blue-300 dark:text-gray-800;
+}
+
+/* .codex-editor .ce-block:focus-within {} */
+
+/* Heading styles */
+/* .codex-editor .ce-header {} */
+
+/* Paragraph styles */
+/* .codex-editor .ce-paragraph {} */
+
+/* List styles */
+/* .codex-editor .ce-list {} */
+
+/* Quote styles */
+/* .codex-editor .ce-quote {} */
+
+/* Image styles */
+/* .codex-editor .ce-image {} */
+/* .codex-editor .ce-image img {} */
+
+/* Button styles */
+/* .codex-editor .ce-button {} */
+
+/* Code block styles */
+/* .codex-editor .ce-code {} */
+
+/* Toolbar styles */
+/* .codex-editor .ce-toolbar {} */
+
+.codex-editor .ce-toolbar__plus,
+.codex-editor .ce-toolbar__settings-btn {
+  @apply dark:text-gray-300 dark:hover:text-gray-800 dark:hover:bg-gray-300;
+}
+
+@media (max-width: 651px) {
+  .codex-editor .ce-toolbar__plus,
+  .codex-editor .ce-toolbar__settings-btn {
+    @apply dark:bg-gray-800 dark:border-gray-600 dark:drop-shadow-md;
+  }
+}
+
+.codex-editor .ce-inline-tool {
+  @apply dark:text-gray-200 dark:hover:bg-gray-700;
+}
+
+.codex-editor .ce-inline-tool--active {
+  @apply dark:text-blue-400;
+}
+
+.codex-editor .ce-popover-item-separator__line {
+  @apply dark:bg-gray-600;
+}
+
+.codex-editor .ce-popover__container {
+  @apply dark:bg-gray-800 dark:border-gray-600 dark:drop-shadow-md;
+}
+
+.codex-editor .ce-popover__search {
+  @apply dark:bg-gray-700;
+}
+
+/* Style the popup items */
+.codex-editor .ce-popover-item,
+.codex-editor .ce-popover-inline {
+  @apply dark:text-gray-200 dark:hover:bg-gray-700;
+}
+
+.codex-editor .ce-popover-item--confirmation {
+  @apply dark:bg-red-600 dark:hover:bg-red-700;
+}
+
+.codex-editor .ce-popover-item--active {
+  @apply dark:text-blue-400;
+}
+
+.codex-editor .ce-inline-tool-input {
+  @apply dark:bg-gray-700;
+}
+
+.codex-editor .tc-toolbox__toggler {
+  @apply dark:text-gray-500 dark:hover:text-gray-300;
+}
+.codex-editor .tc-table,
+.codex-editor .tc-toolbox--row,
+.codex-editor .tc-row,
+.codex-editor .tc-cell,
+.codex-editor .tc-table--heading .tc-row:first-child,
+.codex-editor .tc-add-column,
+.codex-editor .tc-add-row {
+  @apply dark:border-gray-600 dark:after:border-gray-600;
+}
+
+.codex-editor .tc-add-column,
+.codex-editor .tc-add-row {
+  @apply dark:hover:bg-gray-700 dark:hover:before:bg-gray-700;
+}
+
+.codex-editor .tc-row--selected,
+.codex-editor .tc-row--selected::before,
+.codex-editor .tc-row--selected::after,
+.codex-editor .tc-cell--selected,
+.codex-editor .tc-cell--selected::before,
+.codex-editor .tc-cell--selected::after {
+  @apply dark:bg-gray-700 dark:text-gray-300;
+}
+
+.codex-editor .tc-popover {
+  @apply dark:bg-gray-800 dark:border-gray-600;
+}
+
+/* Style the popup items */
+.codex-editor .tc-popover__item {
+  @apply dark:text-gray-200 dark:hover:bg-gray-700;
+}
+
+.codex-editor .tc-popover__item-icon {
+  @apply dark:bg-gray-800 dark:border-gray-600;
+}
+
+.codex-editor .tc-popover__item--confirm .tc-popover__item-icon {
+  @apply dark:bg-red-600 dark:border-red-700;
+}
+
+.codex-editor .tc-popover__item--confirm {
+  @apply dark:bg-red-600 dark:hover:bg-red-700;
+}
+
+.codex-editor .cdx-input {
+  @apply dark:border-gray-600;
+}
+
+.codex-editor .cdx-quote {
+  @apply pl-4;
+}
+
+.codex-editor .ce-code__textarea {
+  @apply dark:bg-gray-950 dark:text-gray-400 border-none ring-0;
+}
+
+.codex-editor .embed-tool__content {
+  @apply w-auto;
+}
+
+.codex-editor .petal-image {
+  @apply w-full cursor-pointer mb-3;
+}
+
+.codex-editor .petal-image-input {
+  /* pc-text-input */
+  @apply block w-full border-gray-300 rounded-md shadow-xs focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:focus:border-primary-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed dark:bg-gray-800 dark:text-gray-300 dark:disabled:bg-gray-700 focus:outline-hidden;
+  @apply mb-3;
+}
+
+.codex-editor .petal-image-placeholder {
+  @apply w-full h-96 bg-gray-100 dark:bg-gray-700 rounded-md text-gray-400 shadow-xs dark:text-gray-600 flex justify-center items-center cursor-pointer;
+}
+
+.codex-editor .petal-image-placeholder-icon {
+  @apply w-24 h-24;
+}
+
+.cdx-warning:before {
+  background-image: none !important;
+  @apply hero-exclamation-circle h-3 w-3;
+}
+
+.cdx-marker {
+  @apply rounded-xs bg-yellow-100 dark:bg-yellow-100 py-1;
+}
+
+.inline-code {
+  /* Counters inline code styling - we want Tailwind typography */
+  @apply bg-inherit text-inherit text-sm font-mono font-semibold dark:text-white p-0 m-0 tracking-normal;
+}

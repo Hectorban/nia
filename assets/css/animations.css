@@ -1,0 +1,199 @@
+@theme {
+  --animate-blob: blob 10s infinite;
+
+  @keyframes blob {
+    0% {
+      transform: translate(0px, 0px) scale(1);
+    }
+    33% {
+      transform: translate(30px, -50px) scale(1.2);
+    }
+    66% {
+      transform: translate(-20px, 20px) scale(0.8);
+    }
+    100% {
+      transform: translate(0px, 0px) scale(1);
+    }
+  }
+
+  --animate-border-beam: border-beam 12s infinite linear;
+
+  @keyframes border-beam {
+    0% {
+      offset-distance: 0%;
+    }
+    100% {
+      offset-distance: 100%;
+    }
+  }
+
+  --animate-aurora: aurora 60s linear infinite;
+
+  @keyframes aurora {
+    0% {
+      background-position:
+        50% 50%,
+        50% 50%;
+    }
+    100% {
+      background-position:
+        350% 50%,
+        350% 50%;
+    }
+  }
+}
+
+@layer component {
+  .border-beam-wrapper {
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+    padding: 1px;
+  }
+
+  .border-beam {
+    /* Default values provided by CSS variables (can be overridden via inline style) */
+    --color-from: #ffaa40;
+    --color-to: #9c40ff;
+    --border-radius: 0.5rem;
+    --border-color: hsl(240, 3.9%, 15.1%);
+    --offset-distance: 0%;
+    --beam-size: 250px;
+
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    position: relative;
+  }
+
+  /* The inner border container uses mask properties to restrict the beam to the border area */
+  .border-beam .border-beam-border {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border: 1px solid transparent;
+    inset: 0;
+    border-radius: inherit;
+    -webkit-mask: linear-gradient(transparent, transparent),
+      linear-gradient(#fff, #fff);
+    mask: linear-gradient(transparent, transparent), linear-gradient(#fff, #fff);
+    -webkit-mask-composite: source-in, xor;
+    mask-composite: intersect;
+    mask-clip: padding-box, border-box;
+    pointer-events: none;
+  }
+
+  .border-beam .border-beam-border::after {
+    content: "";
+    width: var(--beam-size);
+    aspect-ratio: 1 / 1;
+    display: block;
+    box-sizing: border-box;
+    border: 0 solid;
+    /* These CSS properties animate the beam along a path with rounded corners */
+    offset-path: rect(0 auto auto 0 round calc(var(--border-radius) * 12));
+    offset-distance: var(--offset-distance);
+    offset-anchor: 90% 50%;
+    background: linear-gradient(
+      to left,
+      var(--color-from),
+      var(--color-to),
+      transparent
+    );
+    animation: var(--animate-border-beam);
+  }
+
+  .aurora {
+    --aurora-invert: invert(0);
+    --aurora-opacity: 0.5;
+    --aurora-blur: 10px;
+    --mask-position: 100% 0;
+    --mask-coverage: 10%, 70%;
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
+  .aurora .aurora-background {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .aurora .aurora-background .aurora-lights {
+    pointer-events: none;
+    position: absolute;
+    background-image: var(--dark-gradient), var(--aurora);
+    will-change: transform;
+    opacity: var(--aurora-opacity);
+    inset: -10px;
+    filter: blur(var(--aurora-blur)) var(--aurora-invert);
+    -webkit-mask-image: radial-gradient(
+      ellipse at var(--mask-position),
+      #000 var(--mask-coverage)
+    );
+    mask-image: radial-gradient(
+      ellipse at var(--mask-position),
+      #000 var(--mask-coverage)
+    );
+    background-size: 300%, 200%;
+    background-position:
+      50% 50%,
+      50% 50%;
+  }
+
+  .aurora .aurora-background .aurora-lights::after {
+    content: "";
+    position: absolute;
+    background-image: var(--dark-gradient), var(--aurora);
+    background-size: 200%, 100%;
+    background-attachment: fixed;
+    mix-blend-mode: difference;
+    inset: 0;
+    animation: var(--animate-aurora);
+  }
+
+  .aurora .aurora-background .aurora-lights.out-of-view::after {
+    animation-play-state: paused;
+  }
+}
+
+/*
+  Animation effects (works in combination with the GSAP Javascript library - used on the landing page for fade in animations)
+  Basically the CSS describes how the element starts (opacity: 0), and GSAP animates it back to normal (opacity: 1)
+*/
+@utility fade-in-animation {
+  opacity: 0;
+  transform: translateY(15px);
+}
+
+@utility fade-in-from-right-animation {
+  opacity: 0;
+  transform: translateX(30px);
+}
+
+@utility scale-in {
+  transform: scale(0);
+}
+
+@utility animation-delay-1000 {
+  animation-delay: 1s;
+}
+
+@utility animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+@utility animation-delay-3000 {
+  animation-delay: 3s;
+}
+
+@utility animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+@utility animation-delay-5000 {
+  animation-delay: 5s;
+}

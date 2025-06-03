@@ -1,5 +1,110 @@
-@import "tailwindcss/base";
-@import "tailwindcss/components";
-@import "tailwindcss/utilities";
+@import "tailwindcss";
 
-/* This file is for your main application CSS */
+@source "../../deps/petal_components/**/*.*ex";
+@import "../../deps/petal_components/assets/default.css";
+
+@import "./colors.css";
+@import "./combo-box.css";
+@import "./editorjs.css";
+@import "./animations.css";
+@import "../node_modules/tippy.js/dist/tippy.css" layer(components);
+
+@plugin "@tailwindcss/typography";
+@plugin "@tailwindcss/forms";
+@plugin "@tailwindcss/aspect-ratio";
+@plugin "./tailwind_heroicons.js";
+
+/* When you use `phx-click` on an element and click it, the class "phx-click-loading" is applied.
+  With this plugin we can do things like show a spinner when loading.
+  Example usage:
+      <.button phx-click="x">
+        <div class="phx-click-loading:hidden">Click me!</div>
+        <.spinner class="hidden phx-click-loading:!block" />
+      </.button>
+      Docs: https://hexdocs.pm/phoenix_live_view/bindings.html#loading-states-and-errors */
+@variant phx-click-loading ([".phx-click-loading&", ".phx-click-loading &"]);
+
+/* When you use `phx-submit` on a form and submit the form, the 'phx-submit-loading` class is applied to the form.
+  Example usage:
+    <.form :let={f} for={:user} phx-submit="x">
+      <div class="hidden phx-submit-loading:!block">
+        Please wait while we save our content...
+      </div>
+      <div class="phx-submit-loading:hidden">
+        <.text_input form={f} field={:name} />
+        <button>Submit</button>
+      </div>
+    </.form> */
+@variant phx-submit-loading ([".phx-submit-loading&", ".phx-submit-loading &"]);
+
+/* When you use `phx-change` on a form and change the form, the 'phx-change-loading` class is applied to the form.
+  Example usage:
+    <.form :let={f} for={:user} phx-change="x">
+      <div class="hidden phx-change-loading:!block">
+        Please wait while we save our content...
+      </div>
+      <div class="phx-change-loading:hidden">
+        <.text_input form={f} field={:name} />
+        <button>Submit</button>
+      </div>
+    </.form> */
+@variant phx-change-loading ([".phx-change-loading&", ".phx-change-loading &"]);
+
+/* Adding the dark class will enable dark mode:
+  <html class="dark">
+    <body>
+      <!-- Will be black -->
+      <div class="bg-white dark:bg-black">
+        <!-- ... -->
+      </div>
+    </body>
+  </html> */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* This makes scrollbars look better in dark mode */
+.dark {
+  color-scheme: dark;
+}
+
+/*
+ Make LiveView wrapper divs transparent for layout.
+ This makes it possible to use LiveViews as flex children for example. */
+[data-phx-root-id] {
+  display: contents;
+}
+
+@layer base {
+  /* Add base styles here (eg. styles that are the defaults for common elements)
+
+    Example base style:
+    h1 {
+      @apply text-2xl;
+    }
+
+  */
+
+  /* Use the pointer for buttons */
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+@layer components {
+  /* Add component styles here (eg. buttons or tabs or anything that uses a number of styles)
+
+    Example component:
+    .btn-blue {
+      @apply px-4 py-2 font-bold text-white bg-blue-500 rounded hover:bg-blue-700;
+    }
+  */
+}
+
+/* Add utility styles here (eg. classes that can be applied to any element or component - all Tailwind classes are utilties)
+
+  Example utility:
+  @utility content-auto {
+    content-visibility: auto;
+  }
+
+*/

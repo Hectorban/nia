@@ -1,178 +1,423 @@
 defmodule NiaWeb.CoreComponents do
-  @moduledoc """
-  Provides core UI components.
-
-  At first glance, this module may seem daunting, but its goal is to provide
-  core building blocks for your application, such as modals, tables, and
-  forms. The components consist mostly of markup and are well-documented
-  with doc strings and declarative assigns. You may customize and style
-  them in any way you want, based on your application growth and needs.
-
-  The default components use Tailwind CSS, a utility-first CSS framework.
-  See the [Tailwind CSS documentation](https://tailwindcss.com) to learn
-  how to customize them or feel free to swap in another framework altogether.
-
-  Icons are provided by [heroicons](https://heroicons.com). See `icon/1` for usage.
-  """
+  @moduledoc false
   use Phoenix.Component
+  use NiaWeb, :verified_routes
+  use NiaComponents
   use Gettext, backend: NiaWeb.Gettext
+
+  import NiaWeb.ColorSchemeSwitch
+  import NiaWeb.Helpers
+  import NiaWeb.SidebarLayout
+  import NiaWeb.SocialButton
+  import NiaWeb.StackedLayout
 
   alias Phoenix.LiveView.JS
 
+  # SETUP_TODO
+  # This module relies on the following images. Replace these images with your logos.
+  # We created a Figma file to easily create and import these assets: https://www.figma.com/community/file/1139155923924401853
+  # /priv/static/images/logo_dark.svg
+  # /priv/static/images/logo_light.svg
+
+  # /priv/static/images/logo_icon_dark.svg
+  # /priv/static/images/logo_icon_light.svg
+  # /priv/static/images/favicon.png
+  # /priv/static/images/open-graph.png
+
+  @doc "Displays your full logo. "
+
+  attr :class, :string, default: "h-10"
+  attr :variant, :string, default: "both", values: ["dark", "light", "both"]
+
+  def logo(assigns) do
+    assigns = assign_new(assigns, :logo_file, fn -> "logo_#{assigns[:variant]}.svg" end)
+
+    ~H"""
+    <%= if Enum.member?(["light", "dark"], @variant) do %>
+      <img class={@class} src={~p"/images/#{@logo_file}"} alt={Nia.config(:app_name)} />
+    <% else %>
+      <img
+        class={@class <> " block dark:hidden"}
+        src={~p"/images/logo_dark.svg"}
+        alt={Nia.config(:app_name)}
+      />
+      <img
+        class={@class <> " hidden dark:block"}
+        src={~p"/images/logo_light.svg"}
+        alt={Nia.config(:app_name)}
+      />
+    <% end %>
+    """
+  end
+
+  @doc "Displays just the icon part of your logo"
+
+  attr :class, :string, default: "h-9 w-9"
+  attr :variant, :string, default: "both", values: ["dark", "light", "both"]
+
+  def logo_icon(assigns) do
+    assigns = assign_new(assigns, :logo_file, fn -> "logo_icon_#{assigns[:variant]}.svg" end)
+
+    ~H"""
+    <%= if Enum.member?(["light", "dark"], @variant) do %>
+      <img class={@class} src={~p"/images/#{@logo_file}"} alt={Nia.config(:app_name)} />
+    <% else %>
+      <img
+        class={@class <> " block dark:hidden"}
+        src={~p"/images/logo_icon_dark.svg"}
+        alt={Nia.config(:app_name)}
+      />
+      <img
+        class={@class <> " hidden dark:block"}
+        src={~p"/images/logo_icon_light.svg"}
+        alt={Nia.config(:app_name)}
+      />
+    <% end %>
+    """
+  end
+
+  def logo_for_emails(assigns) do
+    ~H"""
+    <img height="60" src={Nia.config(:logo_url_for_emails)} />
+    """
+  end
+
+  attr :current_user, :map, default: nil
+  attr :max_width, :string, default: "lg", values: ["sm", "md", "lg", "xl", "full"]
+
+  def footer(assigns) do
+    ~H"""
+    <section id="footer">
+      <div class="py-20">
+        <.container max_width={@max_width}>
+          <div class="flex flex-wrap items-center justify-between pb-12 border-b border-gray-200 dark:border-gray-800">
+            <div class="w-full mb-12 md:w-1/5 md:mb-0">
+              <a class="inline-block text-3xl font-bold leading-none" href="/">
+                <.logo class="h-10" />
+              </a>
+            </div>
+            <div class="w-full md:w-auto">
+              <ul class="flex flex-wrap items-center md:space-x-5">
+                <.list_menu_items
+                  li_class="w-full mb-2 md:w-auto md:mb-0"
+                  a_class="text-gray-700 dark:text-gray-300 md:text-sm hover:text-gray-800 dark:hover:text-gray-400"
+                  menu_items={public_menu_items(@current_user)}
+                />
+              </ul>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center justify-between mt-8">
+            <div class="order-last text-sm text-gray-600 dark:text-gray-400">
+              <div>
+                © {Timex.now().year} {Nia.config(:business_name) <>
+                  ". All rights reserved."}
+              </div>
+
+              <div class="mt-2 divide-x divide-gray-500 dark:divide-gray-400">
+                <.link href="/privacy" class="pr-3 hover:text-gray-900 dark:hover:text-gray-300">
+                  Privacy Policy
+                </.link>
+                <.link href="/license" class="px-3 hover:text-gray-900 dark:hover:text-gray-300">
+                  License
+                </.link>
+              </div>
+            </div>
+            <div class="order-first mb-4 md:mb-0 md:order-last">
+              <%= if Nia.config(:twitter_url) do %>
+                <a target="_blank" class={social_a_class()} href={Nia.config(:twitter_url)}>
+                  <svg
+                    class={social_svg_class()}
+                    xmlns="http://www.w3.org/2000/svg"
+                    data-name="Layer 1"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M22,5.8a8.49,8.49,0,0,1-2.36.64,4.13,4.13,0,0,0,1.81-2.27,8.21,8.21,0,0,1-2.61,1,4.1,4.1,0,0,0-7,3.74A11.64,11.64,0,0,1,3.39,4.62a4.16,4.16,0,0,0-.55,2.07A4.09,4.09,0,0,0,4.66,10.1,4.05,4.05,0,0,1,2.8,9.59v.05a4.1,4.1,0,0,0,3.3,4A3.93,3.93,0,0,1,5,13.81a4.9,4.9,0,0,1-.77-.07,4.11,4.11,0,0,0,3.83,2.84A8.22,8.22,0,0,1,3,18.34a7.93,7.93,0,0,1-1-.06,11.57,11.57,0,0,0,6.29,1.85A11.59,11.59,0,0,0,20,8.45c0-.17,0-.35,0-.53A8.43,8.43,0,0,0,22,5.8Z" />
+                  </svg>
+                </a>
+              <% end %>
+
+              <%= if Nia.config(:github_url) do %>
+                <a target="_blank" class={social_a_class()} href={Nia.config(:github_url)}>
+                  <svg
+                    class={social_svg_class()}
+                    xmlns="http://www.w3.org/2000/svg"
+                    data-name="Layer 1"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M12,2.2467A10.00042,10.00042,0,0,0,8.83752,21.73419c.5.08752.6875-.21247.6875-.475,0-.23749-.01251-1.025-.01251-1.86249C7,19.85919,6.35,18.78423,6.15,18.22173A3.636,3.636,0,0,0,5.125,16.8092c-.35-.1875-.85-.65-.01251-.66248A2.00117,2.00117,0,0,1,6.65,17.17169a2.13742,2.13742,0,0,0,2.91248.825A2.10376,2.10376,0,0,1,10.2,16.65923c-2.225-.25-4.55-1.11254-4.55-4.9375a3.89187,3.89187,0,0,1,1.025-2.6875,3.59373,3.59373,0,0,1,.1-2.65s.83747-.26251,2.75,1.025a9.42747,9.42747,0,0,1,5,0c1.91248-1.3,2.75-1.025,2.75-1.025a3.59323,3.59323,0,0,1,.1,2.65,3.869,3.869,0,0,1,1.025,2.6875c0,3.83747-2.33752,4.6875-4.5625,4.9375a2.36814,2.36814,0,0,1,.675,1.85c0,1.33752-.01251,2.41248-.01251,2.75,0,.26251.1875.575.6875.475A10.0053,10.0053,0,0,0,12,2.2467Z" />
+                  </svg>
+                </a>
+              <% end %>
+
+              <%= if Nia.config(:discord_url) do %>
+                <a target="_blank" class={social_a_class()} href={Nia.config(:discord_url)}>
+                  <svg
+                    class={social_svg_class()}
+                    xmlns="http://www.w3.org/2000/svg"
+                    data-name="Layer 1"
+                    viewBox="0 0 16 16"
+                  >
+                    <path d="M13.545 2.907a13.227 13.227 0 0 0-3.257-1.011.05.05 0 0 0-.052.025c-.141.25-.297.577-.406.833a12.19 12.19 0 0 0-3.658 0 8.258 8.258 0 0 0-.412-.833.051.051 0 0 0-.052-.025c-1.125.194-2.22.534-3.257 1.011a.041.041 0 0 0-.021.018C.356 6.024-.213 9.047.066 12.032c.001.014.01.028.021.037a13.276 13.276 0 0 0 3.995 2.02.05.05 0 0 0 .056-.019c.308-.42.582-.863.818-1.329a.05.05 0 0 0-.01-.059.051.051 0 0 0-.018-.011 8.875 8.875 0 0 1-1.248-.595.05.05 0 0 1-.02-.066.051.051 0 0 1 .015-.019c.084-.063.168-.129.248-.195a.05.05 0 0 1 .051-.007c2.619 1.196 5.454 1.196 8.041 0a.052.052 0 0 1 .053.007c.08.066.164.132.248.195a.051.051 0 0 1-.004.085 8.254 8.254 0 0 1-1.249.594.05.05 0 0 0-.03.03.052.052 0 0 0 .003.041c.24.465.515.909.817 1.329a.05.05 0 0 0 .056.019 13.235 13.235 0 0 0 4.001-2.02.049.049 0 0 0 .021-.037c.334-3.451-.559-6.449-2.366-9.106a.034.034 0 0 0-.02-.019Zm-8.198 7.307c-.789 0-1.438-.724-1.438-1.612 0-.889.637-1.613 1.438-1.613.807 0 1.45.73 1.438 1.613 0 .888-.637 1.612-1.438 1.612Zm5.316 0c-.788 0-1.438-.724-1.438-1.612 0-.889.637-1.613 1.438-1.613.807 0 1.451.73 1.438 1.613 0 .888-.631 1.612-1.438 1.612Z" />
+                  </svg>
+                </a>
+              <% end %>
+            </div>
+          </div>
+        </.container>
+      </div>
+    </section>
+    """
+  end
+
+  defp social_a_class,
+    do: "inline-block p-2 rounded-sm dark:bg-gray-800 bg-gray-500 hover:bg-gray-700 dark:hover:bg-gray-600 group"
+
+  defp social_svg_class, do: "w-5 h-5 fill-white dark:fill-gray-400 group-hover:fill-white"
+
   @doc """
-  Renders a modal.
+  A kind of proxy layout allowing you to pass in a user. Layout components should have little knowledge about your application so this is a way you can pass in a user and it will build a lot of the attributes for you based off the user.
+
+  Ideally you should modify this file a lot and not touch the actual layout components like "sidebar_layout" and "stacked_layout".
+  If you're creating a new layout then duplicate "sidebar_layout" or "stacked_layout" and give it a new name. Then modify this file to allow your new layout. This way live views can keep using this component and simply switch the "type" attribute to your new layout.
+  """
+  attr :type, :string, default: "sidebar", values: ["sidebar", "stacked", "public"]
+  attr :show_notification_bell, :boolean, default: true
+  attr :current_page, :atom, required: true
+  attr :current_user, :map, default: nil
+  attr :public_menu_items, :list
+  attr :main_menu_items, :list
+  attr :user_menu_items, :list
+  attr :avatar_src, :string
+  attr :current_user_name, :string
+  attr :sidebar_title, :string, default: nil
+  attr :home_path, :string
+  attr :container_max_width, :string, default: "lg", values: ["sm", "md", "lg", "xl", "full"]
+  attr :collapsible, :boolean, default: true
+  attr :collapsed_only, :boolean, default: false
+  attr :default_collapsed, :boolean, default: false
+  slot :logo_icon
+  slot :inner_block
+  slot :top_right
+  slot :top_right_mobile
+  slot :logo
+
+  def layout(assigns) do
+    assigns =
+      assigns
+      |> assign_new(:public_menu_items, fn -> public_menu_items(assigns[:current_user]) end)
+      |> assign_new(:main_menu_items, fn -> main_menu_items(assigns[:current_user]) end)
+      |> assign_new(:user_menu_items, fn -> user_menu_items(assigns[:current_user]) end)
+      |> assign_new(:current_user_name, fn -> user_name(assigns[:current_user]) end)
+      |> assign_new(:avatar_src, fn -> user_avatar_url(assigns[:current_user]) end)
+      |> assign_new(:home_path, fn -> home_path(assigns[:current_user]) end)
+
+    ~H"""
+    <%= case @type do %>
+      <% "sidebar" -> %>
+        <.sidebar_layout {assigns}>
+          <:logo>
+            <.logo class="h-8 transition-transform duration-300 ease-out transform hover:scale-105" />
+          </:logo>
+          <:logo_icon>
+            <.logo_icon />
+          </:logo_icon>
+          <:top_right>
+            <.color_scheme_switch />
+            <.live_component
+              :if={@show_notification_bell}
+              module={NiaWeb.NotificationBellComponent}
+              id={NiaWeb.NotificationBellComponent.lc_id()}
+              current_user={@current_user}
+            />
+          </:top_right>
+          {render_slot(@inner_block)}
+        </.sidebar_layout>
+      <% "stacked" -> %>
+        <.stacked_layout {assigns}>
+          <:logo>
+            <div class="flex items-center shrink-0 w-24 h-full">
+              <div class="hidden lg:block">
+                <.logo class="h-8" />
+              </div>
+              <div class="block lg:hidden">
+                <.logo_icon class="w-auto h-8" />
+              </div>
+            </div>
+          </:logo>
+          <:top_right>
+            <.color_scheme_switch />
+            <.live_component
+              :if={@show_notification_bell}
+              module={NiaWeb.NotificationBellComponent}
+              id={NiaWeb.NotificationBellComponent.lc_id()}
+              current_user={@current_user}
+            />
+          </:top_right>
+          <:top_right_mobile>
+            <.color_scheme_switch />
+            <.live_component
+              :if={@show_notification_bell}
+              module={NiaWeb.NotificationBellComponent}
+              id={NiaWeb.NotificationBellComponent.lc_id("mobile")}
+              dropdown_id={NiaWeb.NotificationBellComponent.dropdown_id("mobile")}
+              icon_button_id={NiaWeb.NotificationBellComponent.icon_button_id("mobile")}
+              current_user={@current_user}
+            />
+          </:top_right_mobile>
+          {render_slot(@inner_block)}
+        </.stacked_layout>
+    <% end %>
+    """
+  end
+
+  # Shows the login buttons for all available providers. Can add a break "Or login with"
+  attr :or_location, :string, default: "", values: ["top", "bottom", ""]
+  attr :or_text, :string, default: "Or"
+  attr :conn_or_socket, :any
+
+  def auth_providers(assigns) do
+    ~H"""
+    <%= if auth_provider_loaded?("google") || auth_provider_loaded?("github") || auth_provider_loaded?("passwordless") do %>
+      <%= if @or_location == "top" do %>
+        <.or_break or_text={@or_text} />
+      <% end %>
+
+      <div class="flex flex-col gap-2">
+        <%= if auth_provider_loaded?("passwordless") do %>
+          <.link
+            navigate={~p"/auth/sign-in/passwordless"}
+            class="inline-flex items-center justify-center w-full px-4 py-2 text-sm font-medium leading-5 text-gray-700 bg-white border border-gray-300 rounded-md hover:text-gray-900 hover:border-gray-400 hover:bg-gray-50 focus:outline-hidden focus:border-gray-400 focus:bg-gray-100 focus:text-gray-900 active:border-gray-400 active:bg-gray-200 active:text-black dark:text-gray-300 dark:focus:text-gray-100 dark:active:text-gray-100 dark:hover:text-gray-200 dark:bg-transparent dark:hover:bg-gray-800 dark:hover:border-gray-400 dark:border-gray-500 dark:focus:border-gray-300 dark:active:border-gray-300"
+          >
+            <.icon name="hero-envelope" class="w-5 h-5" />
+            <span class="ml-2">{gettext("Continue with passwordless")}</span>
+          </.link>
+        <% end %>
+
+        <%= if auth_provider_loaded?("google") do %>
+          <.social_button
+            link_type="a"
+            to={~p"/auth/google"}
+            variant="outline"
+            logo="google"
+            class="w-full"
+          />
+        <% end %>
+
+        <%= if auth_provider_loaded?("github") do %>
+          <.social_button
+            link_type="a"
+            to={~p"/auth/github"}
+            variant="outline"
+            logo="github"
+            class="w-full"
+          />
+        <% end %>
+      </div>
+
+      <%= if @or_location == "bottom" do %>
+        <.or_break or_text={@or_text} />
+      <% end %>
+    <% end %>
+    """
+  end
+
+  @doc """
+  Checks if a ueberauth provider has been enabled with the correct environment variables
 
   ## Examples
 
-      <.modal id="confirm-modal">
-        This is a modal.
-      </.modal>
-
-  JS commands may be passed to the `:on_cancel` to configure
-  the closing/cancel event, for example:
-
-      <.modal id="confirm" on_cancel={JS.navigate(~p"/posts")}>
-        This is another modal.
-      </.modal>
-
+      iex> auth_provider_loaded?("google")
+      iex> true
   """
-  attr :id, :string, required: true
-  attr :show, :boolean, default: false
-  attr :on_cancel, JS, default: %JS{}
-  slot :inner_block, required: true
+  def auth_provider_loaded?(provider) do
+    case provider do
+      "google" ->
+        get_in(Application.get_env(:ueberauth, Ueberauth.Strategy.Google.OAuth), [:client_id])
 
-  def modal(assigns) do
+      "github" ->
+        get_in(Application.get_env(:ueberauth, Ueberauth.Strategy.Github.OAuth), [:client_id])
+
+      "passwordless" ->
+        Nia.config(:passwordless_enabled)
+    end
+  end
+
+  # Shows a line with some text in the middle of the line. eg "Or login with"
+  attr :or_text, :string
+
+  def or_break(assigns) do
     ~H"""
-    <div
-      id={@id}
-      phx-mounted={@show && show_modal(@id)}
-      phx-remove={hide_modal(@id)}
-      data-cancel={JS.exec(@on_cancel, "phx-remove")}
-      class="relative z-50 hidden"
-    >
-      <div id={"#{@id}-bg"} class="bg-zinc-50/90 fixed inset-0 transition-opacity" aria-hidden="true" />
-      <div
-        class="fixed inset-0 overflow-y-auto"
-        aria-labelledby={"#{@id}-title"}
-        aria-describedby={"#{@id}-description"}
-        role="dialog"
-        aria-modal="true"
-        tabindex="0"
-      >
-        <div class="flex min-h-full items-center justify-center">
-          <div class="w-full max-w-3xl p-4 sm:p-6 lg:py-8">
-            <.focus_wrap
-              id={"#{@id}-container"}
-              phx-window-keydown={JS.exec("data-cancel", to: "##{@id}")}
-              phx-key="escape"
-              phx-click-away={JS.exec("data-cancel", to: "##{@id}")}
-              class="shadow-zinc-700/10 ring-zinc-700/10 relative hidden rounded-2xl bg-white p-14 shadow-lg ring-1 transition"
-            >
-              <div class="absolute top-6 right-5">
-                <button
-                  phx-click={JS.exec("data-cancel", to: "##{@id}")}
-                  type="button"
-                  class="-m-3 flex-none p-3 opacity-20 hover:opacity-40"
-                  aria-label={gettext("close")}
-                >
-                  <.icon name="hero-x-mark-solid" class="h-5 w-5" />
-                </button>
-              </div>
-              <div id={"#{@id}-content"}>
-                {render_slot(@inner_block)}
-              </div>
-            </.focus_wrap>
-          </div>
-        </div>
+    <div class="relative my-5">
+      <div class="absolute inset-0 flex items-center">
+        <div class="w-full border-t border-gray-300 dark:border-gray-600"></div>
+      </div>
+      <div class="relative flex justify-center text-sm">
+        <span class="px-2 text-gray-500 bg-white dark:bg-gray-800">
+          {@or_text}
+        </span>
       </div>
     </div>
     """
   end
 
-  @doc """
-  Renders flash notices.
+  attr :li_class, :string, default: ""
+  attr :a_class, :string, default: ""
+  attr :menu_items, :list, default: [], doc: "list of maps with keys :method, :path, :label"
 
-  ## Examples
-
-      <.flash kind={:info} flash={@flash} />
-      <.flash kind={:info} phx-mounted={show("#flash")}>Welcome Back!</.flash>
-  """
-  attr :id, :string, doc: "the optional id of flash container"
-  attr :flash, :map, default: %{}, doc: "the map of flash messages to display"
-  attr :title, :string, default: nil
-  attr :kind, :atom, values: [:info, :error], doc: "used for styling and flash lookup"
-  attr :rest, :global, doc: "the arbitrary HTML attributes to add to the flash container"
-
-  slot :inner_block, doc: "the optional inner block that renders the flash message"
-
-  def flash(assigns) do
-    assigns = assign_new(assigns, :id, fn -> "flash-#{assigns.kind}" end)
-
+  def list_menu_items(assigns) do
     ~H"""
-    <div
-      :if={msg = render_slot(@inner_block) || Phoenix.Flash.get(@flash, @kind)}
-      id={@id}
-      phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide("##{@id}")}
-      role="alert"
-      class={[
-        "fixed top-2 right-2 mr-2 w-80 sm:w-96 z-50 rounded-lg p-3 ring-1",
-        @kind == :info && "bg-emerald-50 text-emerald-800 ring-emerald-500 fill-cyan-900",
-        @kind == :error && "bg-rose-50 text-rose-900 shadow-md ring-rose-500 fill-rose-900"
-      ]}
-      {@rest}
-    >
-      <p :if={@title} class="flex items-center gap-1.5 text-sm font-semibold leading-6">
-        <.icon :if={@kind == :info} name="hero-information-circle-mini" class="h-4 w-4" />
-        <.icon :if={@kind == :error} name="hero-exclamation-circle-mini" class="h-4 w-4" />
-        {@title}
-      </p>
-      <p class="mt-2 text-sm leading-5">{msg}</p>
-      <button type="button" class="group absolute top-1 right-1 p-2" aria-label={gettext("close")}>
-        <.icon name="hero-x-mark-solid" class="h-5 w-5 opacity-40 group-hover:opacity-70" />
-      </button>
-    </div>
+    <%= for menu_item <- @menu_items do %>
+      <li class={@li_class}>
+        <.link
+          href={menu_item.path}
+          class={@a_class}
+          method={if menu_item[:method], do: menu_item[:method], else: nil}
+        >
+          {menu_item.label}
+        </.link>
+      </li>
+    <% end %>
     """
   end
 
   @doc """
-  Shows the flash group with standard titles and content.
-
-  ## Examples
-
-      <.flash_group flash={@flash} />
+  Generates a generic error message.
   """
-  attr :flash, :map, required: true, doc: "the map of flash messages"
-  attr :id, :string, default: "flash-group", doc: "the optional id of flash container"
+  slot :inner_block, required: true
 
-  def flash_group(assigns) do
+  def error(assigns) do
     ~H"""
-    <div id={@id}>
-      <.flash kind={:info} title={gettext("Success!")} flash={@flash} />
-      <.flash kind={:error} title={gettext("Error!")} flash={@flash} />
-      <.flash
-        id="client-error"
-        kind={:error}
-        title={gettext("We can't find the internet")}
-        phx-disconnected={show(".phx-client-error #client-error")}
-        phx-connected={hide("#client-error")}
-        hidden
-      >
-        {gettext("Attempting to reconnect")}
-        <.icon name="hero-arrow-path" class="ml-1 h-3 w-3 animate-spin" />
-      </.flash>
+    <p class="flex gap-3 my-3 text-sm leading-6 text-rose-600">
+      <.icon name="hero-exclamation-circle-mini" class="mt-0.5 h-5 w-5 flex-none fill-rose-500" />
+      {render_slot(@inner_block)}
+    </p>
+    """
+  end
 
-      <.flash
-        id="server-error"
-        kind={:error}
-        title={gettext("Something went wrong!")}
-        phx-disconnected={show(".phx-server-error #server-error")}
-        phx-connected={hide("#server-error")}
-        hidden
-      >
-        {gettext("Hang in there while we get back on track")}
-        <.icon name="hero-arrow-path" class="ml-1 h-3 w-3 animate-spin" />
-      </.flash>
-    </div>
+  ## Original Core Components
+
+  @doc """
+  Renders a header with title.
+  """
+  attr :class, :string, default: nil
+
+  slot :inner_block, required: true
+  slot :subtitle
+  slot :actions
+
+  def header(assigns) do
+    ~H"""
+    <header class={[@actions != [] && "flex items-center justify-between gap-6", @class]}>
+      <div>
+        <h1 class="text-lg font-semibold leading-8 text-gray-700 dark:text-gray-300">
+          {render_slot(@inner_block)}
+        </h1>
+        <p :if={@subtitle != []} class="mt-2 text-sm leading-6 text-gray-700 dark:text-gray-300">
+          {render_slot(@subtitle)}
+        </p>
+      </div>
+      <div class="flex-none">{render_slot(@actions)}</div>
+    </header>
     """
   end
 
@@ -202,7 +447,7 @@ defmodule NiaWeb.CoreComponents do
   def simple_form(assigns) do
     ~H"""
     <.form :let={f} for={@for} as={@as} {@rest}>
-      <div class="mt-10 space-y-8 bg-white">
+      <div class="mt-6 space-y-4">
         {render_slot(@inner_block, f)}
         <div :for={action <- @actions} class="mt-2 flex items-center justify-between gap-6">
           {render_slot(action, f)}
@@ -213,320 +458,13 @@ defmodule NiaWeb.CoreComponents do
   end
 
   @doc """
-  Renders a button.
-
-  ## Examples
-
-      <.button>Send!</.button>
-      <.button phx-click="go" class="ml-2">Send!</.button>
-  """
-  attr :type, :string, default: nil
-  attr :class, :string, default: nil
-  attr :rest, :global, include: ~w(disabled form name value)
-
-  slot :inner_block, required: true
-
-  def button(assigns) do
-    ~H"""
-    <button
-      type={@type}
-      class={[
-        "phx-submit-loading:opacity-75 rounded-lg bg-zinc-900 hover:bg-zinc-700 py-2 px-3",
-        "text-sm font-semibold leading-6 text-white active:text-white/80",
-        @class
-      ]}
-      {@rest}
-    >
-      {render_slot(@inner_block)}
-    </button>
-    """
-  end
-
-  @doc """
-  Renders an input with label and error messages.
-
-  A `Phoenix.HTML.FormField` may be passed as argument,
-  which is used to retrieve the input name, id, and values.
-  Otherwise all attributes may be passed explicitly.
-
-  ## Types
-
-  This function accepts all HTML input types, considering that:
-
-    * You may also set `type="select"` to render a `<select>` tag
-
-    * `type="checkbox"` is used exclusively to render boolean values
-
-    * For live file uploads, see `Phoenix.Component.live_file_input/1`
-
-  See https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input
-  for more information. Unsupported types, such as hidden and radio,
-  are best written directly in your templates.
-
-  ## Examples
-
-      <.input field={@form[:email]} type="email" />
-      <.input name="my-input" errors={["oh no!"]} />
-  """
-  attr :id, :any, default: nil
-  attr :name, :any
-  attr :label, :string, default: nil
-  attr :value, :any
-
-  attr :type, :string,
-    default: "text",
-    values: ~w(checkbox color date datetime-local email file month number password
-               range search select tel text textarea time url week)
-
-  attr :field, Phoenix.HTML.FormField,
-    doc: "a form field struct retrieved from the form, for example: @form[:email]"
-
-  attr :errors, :list, default: []
-  attr :checked, :boolean, doc: "the checked flag for checkbox inputs"
-  attr :prompt, :string, default: nil, doc: "the prompt for select inputs"
-  attr :options, :list, doc: "the options to pass to Phoenix.HTML.Form.options_for_select/2"
-  attr :multiple, :boolean, default: false, doc: "the multiple flag for select inputs"
-
-  attr :rest, :global,
-    include: ~w(accept autocomplete capture cols disabled form list max maxlength min minlength
-                multiple pattern placeholder readonly required rows size step)
-
-  def input(%{field: %Phoenix.HTML.FormField{} = field} = assigns) do
-    errors = if Phoenix.Component.used_input?(field), do: field.errors, else: []
-
-    assigns
-    |> assign(field: nil, id: assigns.id || field.id)
-    |> assign(:errors, Enum.map(errors, &translate_error(&1)))
-    |> assign_new(:name, fn -> if assigns.multiple, do: field.name <> "[]", else: field.name end)
-    |> assign_new(:value, fn -> field.value end)
-    |> input()
-  end
-
-  def input(%{type: "checkbox"} = assigns) do
-    assigns =
-      assign_new(assigns, :checked, fn ->
-        Phoenix.HTML.Form.normalize_value("checkbox", assigns[:value])
-      end)
-
-    ~H"""
-    <div>
-      <label class="flex items-center gap-4 text-sm leading-6 text-zinc-600">
-        <input type="hidden" name={@name} value="false" disabled={@rest[:disabled]} />
-        <input
-          type="checkbox"
-          id={@id}
-          name={@name}
-          value="true"
-          checked={@checked}
-          class="rounded border-zinc-300 text-zinc-900 focus:ring-0"
-          {@rest}
-        />
-        {@label}
-      </label>
-      <.error :for={msg <- @errors}>{msg}</.error>
-    </div>
-    """
-  end
-
-  def input(%{type: "select"} = assigns) do
-    ~H"""
-    <div>
-      <.label for={@id}>{@label}</.label>
-      <select
-        id={@id}
-        name={@name}
-        class="mt-2 block w-full rounded-md border border-gray-300 bg-white shadow-sm focus:border-zinc-400 focus:ring-0 sm:text-sm"
-        multiple={@multiple}
-        {@rest}
-      >
-        <option :if={@prompt} value="">{@prompt}</option>
-        {Phoenix.HTML.Form.options_for_select(@options, @value)}
-      </select>
-      <.error :for={msg <- @errors}>{msg}</.error>
-    </div>
-    """
-  end
-
-  def input(%{type: "textarea"} = assigns) do
-    ~H"""
-    <div>
-      <.label for={@id}>{@label}</.label>
-      <textarea
-        id={@id}
-        name={@name}
-        class={[
-          "mt-2 block w-full rounded-lg text-zinc-900 focus:ring-0 sm:text-sm sm:leading-6 min-h-[6rem]",
-          @errors == [] && "border-zinc-300 focus:border-zinc-400",
-          @errors != [] && "border-rose-400 focus:border-rose-400"
-        ]}
-        {@rest}
-      >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
-      <.error :for={msg <- @errors}>{msg}</.error>
-    </div>
-    """
-  end
-
-  # All other inputs text, datetime-local, url, password, etc. are handled here...
-  def input(assigns) do
-    ~H"""
-    <div>
-      <.label for={@id}>{@label}</.label>
-      <input
-        type={@type}
-        name={@name}
-        id={@id}
-        value={Phoenix.HTML.Form.normalize_value(@type, @value)}
-        class={[
-          "mt-2 block w-full rounded-lg text-zinc-900 focus:ring-0 sm:text-sm sm:leading-6",
-          @errors == [] && "border-zinc-300 focus:border-zinc-400",
-          @errors != [] && "border-rose-400 focus:border-rose-400"
-        ]}
-        {@rest}
-      />
-      <.error :for={msg <- @errors}>{msg}</.error>
-    </div>
-    """
-  end
-
-  @doc """
-  Renders a label.
-  """
-  attr :for, :string, default: nil
-  slot :inner_block, required: true
-
-  def label(assigns) do
-    ~H"""
-    <label for={@for} class="block text-sm font-semibold leading-6 text-zinc-800">
-      {render_slot(@inner_block)}
-    </label>
-    """
-  end
-
-  @doc """
-  Generates a generic error message.
-  """
-  slot :inner_block, required: true
-
-  def error(assigns) do
-    ~H"""
-    <p class="mt-3 flex gap-3 text-sm leading-6 text-rose-600">
-      <.icon name="hero-exclamation-circle-mini" class="mt-0.5 h-5 w-5 flex-none" />
-      {render_slot(@inner_block)}
-    </p>
-    """
-  end
-
-  @doc """
-  Renders a header with title.
-  """
-  attr :class, :string, default: nil
-
-  slot :inner_block, required: true
-  slot :subtitle
-  slot :actions
-
-  def header(assigns) do
-    ~H"""
-    <header class={[@actions != [] && "flex items-center justify-between gap-6", @class]}>
-      <div>
-        <h1 class="text-lg font-semibold leading-8 text-zinc-800">
-          {render_slot(@inner_block)}
-        </h1>
-        <p :if={@subtitle != []} class="mt-2 text-sm leading-6 text-zinc-600">
-          {render_slot(@subtitle)}
-        </p>
-      </div>
-      <div class="flex-none">{render_slot(@actions)}</div>
-    </header>
-    """
-  end
-
-  @doc ~S"""
-  Renders a table with generic styling.
-
-  ## Examples
-
-      <.table id="users" rows={@users}>
-        <:col :let={user} label="id">{user.id}</:col>
-        <:col :let={user} label="username">{user.username}</:col>
-      </.table>
-  """
-  attr :id, :string, required: true
-  attr :rows, :list, required: true
-  attr :row_id, :any, default: nil, doc: "the function for generating the row id"
-  attr :row_click, :any, default: nil, doc: "the function for handling phx-click on each row"
-
-  attr :row_item, :any,
-    default: &Function.identity/1,
-    doc: "the function for mapping each row before calling the :col and :action slots"
-
-  slot :col, required: true do
-    attr :label, :string
-  end
-
-  slot :action, doc: "the slot for showing user actions in the last table column"
-
-  def table(assigns) do
-    assigns =
-      with %{rows: %Phoenix.LiveView.LiveStream{}} <- assigns do
-        assign(assigns, row_id: assigns.row_id || fn {id, _item} -> id end)
-      end
-
-    ~H"""
-    <div class="overflow-y-auto px-4 sm:overflow-visible sm:px-0">
-      <table class="w-[40rem] mt-11 sm:w-full">
-        <thead class="text-sm text-left leading-6 text-zinc-500">
-          <tr>
-            <th :for={col <- @col} class="p-0 pb-4 pr-6 font-normal">{col[:label]}</th>
-            <th :if={@action != []} class="relative p-0 pb-4">
-              <span class="sr-only">{gettext("Actions")}</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody
-          id={@id}
-          phx-update={match?(%Phoenix.LiveView.LiveStream{}, @rows) && "stream"}
-          class="relative divide-y divide-zinc-100 border-t border-zinc-200 text-sm leading-6 text-zinc-700"
-        >
-          <tr :for={row <- @rows} id={@row_id && @row_id.(row)} class="group hover:bg-zinc-50">
-            <td
-              :for={{col, i} <- Enum.with_index(@col)}
-              phx-click={@row_click && @row_click.(row)}
-              class={["relative p-0", @row_click && "hover:cursor-pointer"]}
-            >
-              <div class="block py-4 pr-6">
-                <span class="absolute -inset-y-px right-0 -left-4 group-hover:bg-zinc-50 sm:rounded-l-xl" />
-                <span class={["relative", i == 0 && "font-semibold text-zinc-900"]}>
-                  {render_slot(col, @row_item.(row))}
-                </span>
-              </div>
-            </td>
-            <td :if={@action != []} class="relative w-14 p-0">
-              <div class="relative whitespace-nowrap py-4 text-right text-sm font-medium">
-                <span class="absolute -inset-y-px -right-4 left-0 group-hover:bg-zinc-50 sm:rounded-r-xl" />
-                <span
-                  :for={action <- @action}
-                  class="relative ml-4 font-semibold leading-6 text-zinc-900 hover:text-zinc-700"
-                >
-                  {render_slot(action, @row_item.(row))}
-                </span>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    """
-  end
-
-  @doc """
   Renders a data list.
 
   ## Examples
 
       <.list>
-        <:item title="Title">{@post.title}</:item>
-        <:item title="Views">{@post.views}</:item>
+        <:item title="Title"><%= @post.title %></:item>
+        <:item title="Views"><%= @post.views %></:item>
       </.list>
   """
   slot :item, required: true do
@@ -536,10 +474,12 @@ defmodule NiaWeb.CoreComponents do
   def list(assigns) do
     ~H"""
     <div class="mt-14">
-      <dl class="-my-4 divide-y divide-zinc-100">
+      <dl class="-my-4 divide-y divide-gray-100 dark:divide-gray-900">
         <div :for={item <- @item} class="flex gap-4 py-4 text-sm leading-6 sm:gap-8">
-          <dt class="w-1/4 flex-none text-zinc-500">{item.title}</dt>
-          <dd class="text-zinc-700">{render_slot(item)}</dd>
+          <dt class="w-1/4 flex-none text-gray-700 dark:text-gray-300 font-bold">
+            {item.title}
+          </dt>
+          <dd class="text-gray-700 dark:text-gray-300">{render_slot(item)}</dd>
         </div>
       </dl>
     </div>
@@ -561,39 +501,12 @@ defmodule NiaWeb.CoreComponents do
     <div class="mt-16">
       <.link
         navigate={@navigate}
-        class="text-sm font-semibold leading-6 text-zinc-900 hover:text-zinc-700"
+        class="text-sm font-semibold leading-6 text-gray-900 dark:text-gray-100 hover:text-gray-700 dark:hover:text-gray-300 flex items-center place-self-start"
       >
-        <.icon name="hero-arrow-left-solid" class="h-3 w-3" />
+        <.icon name="hero-arrow-left-solid" class="h-3 w-3 mr-1" />
         {render_slot(@inner_block)}
       </.link>
     </div>
-    """
-  end
-
-  @doc """
-  Renders a [Heroicon](https://heroicons.com).
-
-  Heroicons come in three styles – outline, solid, and mini.
-  By default, the outline style is used, but solid and mini may
-  be applied by using the `-solid` and `-mini` suffix.
-
-  You can customize the size and colors of the icons by setting
-  width, height, and background color classes.
-
-  Icons are extracted from the `deps/heroicons` directory and bundled within
-  your compiled app.css by the plugin in your `assets/tailwind.config.js`.
-
-  ## Examples
-
-      <.icon name="hero-x-mark-solid" />
-      <.icon name="hero-arrow-path" class="ml-1 w-3 h-3 animate-spin" />
-  """
-  attr :name, :string, required: true
-  attr :class, :string, default: nil
-
-  def icon(%{name: "hero-" <> _} = assigns) do
-    ~H"""
-    <span class={[@name, @class]} />
     """
   end
 
@@ -604,8 +517,7 @@ defmodule NiaWeb.CoreComponents do
       to: selector,
       time: 300,
       transition:
-        {"transition-all transform ease-out duration-300",
-         "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95",
+        {"transition-all transform ease-out duration-300", "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95",
          "opacity-100 translate-y-0 sm:scale-100"}
     )
   end
@@ -615,35 +527,9 @@ defmodule NiaWeb.CoreComponents do
       to: selector,
       time: 200,
       transition:
-        {"transition-all transform ease-in duration-200",
-         "opacity-100 translate-y-0 sm:scale-100",
+        {"transition-all transform ease-in duration-200", "opacity-100 translate-y-0 sm:scale-100",
          "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"}
     )
-  end
-
-  def show_modal(js \\ %JS{}, id) when is_binary(id) do
-    js
-    |> JS.show(to: "##{id}")
-    |> JS.show(
-      to: "##{id}-bg",
-      time: 300,
-      transition: {"transition-all transform ease-out duration-300", "opacity-0", "opacity-100"}
-    )
-    |> show("##{id}-container")
-    |> JS.add_class("overflow-hidden", to: "body")
-    |> JS.focus_first(to: "##{id}-content")
-  end
-
-  def hide_modal(js \\ %JS{}, id) do
-    js
-    |> JS.hide(
-      to: "##{id}-bg",
-      transition: {"transition-all transform ease-in duration-200", "opacity-100", "opacity-0"}
-    )
-    |> hide("##{id}-container")
-    |> JS.hide(to: "##{id}", transition: {"block", "block", "hidden"})
-    |> JS.remove_class("overflow-hidden", to: "body")
-    |> JS.pop_focus()
   end
 
   @doc """
@@ -653,13 +539,20 @@ defmodule NiaWeb.CoreComponents do
     # When using gettext, we typically pass the strings we want
     # to translate as a static argument:
     #
+    #     # Translate "is invalid" in the "errors" domain
+    #     dgettext("errors", "is invalid")
+    #
     #     # Translate the number of files with plural rules
     #     dngettext("errors", "1 file", "%{count} files", count)
     #
-    # However the error messages in our forms and APIs are generated
-    # dynamically, so we need to translate them by calling Gettext
-    # with our gettext backend as first argument. Translations are
-    # available in the errors.po file (as we use the "errors" domain).
+    # Because the error messages we show in our forms and APIs
+    # are defined inside Ecto, we need to translate them dynamically.
+    # This requires us to call the Gettext module passing our gettext
+    # backend as first argument.
+    #
+    # Note we use the "errors" domain, which means translations
+    # should be written to the errors.po file. The :count option is
+    # set by Ecto and indicates we should also apply plural rules.
     if count = opts[:count] do
       Gettext.dngettext(NiaWeb.Gettext, "errors", msg, msg, count, opts)
     else
@@ -672,5 +565,21 @@ defmodule NiaWeb.CoreComponents do
   """
   def translate_errors(errors, field) when is_list(errors) do
     for {^field, {msg, opts}} <- errors, do: translate_error({msg, opts})
+  end
+
+  @doc """
+  Use for when you want to combine all form errors into one message (maybe to display in a flash)
+  """
+  def combine_changeset_error_messages(changeset) do
+    errors =
+      Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->
+        Enum.reduce(opts, msg, fn {key, value}, acc ->
+          String.replace(acc, "%{#{key}}", to_string(value))
+        end)
+      end)
+
+    Enum.map_join(errors, "\n", fn {key, errors} ->
+      "#{Phoenix.Naming.humanize(key)}: #{Enum.join(errors, ", ")}\n"
+    end)
   end
 end

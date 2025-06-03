@@ -19,6 +19,14 @@ defmodule NiaWeb do
 
   def static_paths, do: ~w(assets fonts images favicon.ico robots.txt)
 
+  def component do
+    quote do
+      use Phoenix.Component, global_prefixes: ~w(x-)
+
+      unquote(html_helpers())
+    end
+  end
+
   def router do
     quote do
       use Phoenix.Router, helpers: false
@@ -83,12 +91,15 @@ defmodule NiaWeb do
   defp html_helpers do
     quote do
       # Translation
+      use PetalComponents
+      use NiaComponents
       use Gettext, backend: NiaWeb.Gettext
 
       # HTML escaping functionality
-      import Phoenix.HTML
       # Core UI components
       import NiaWeb.CoreComponents
+      import NiaWeb.Helpers
+      import Phoenix.HTML
 
       # Shortcut for generating JS commands
       alias Phoenix.LiveView.JS
