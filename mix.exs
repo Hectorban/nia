@@ -61,7 +61,8 @@ defmodule Nia.MixProject do
       {:rename_project, "~> 0.1.0", only: :dev},
       {:petal_components, "~> 3.0"},
       {:money, "~> 1.14"},
-      {:flop, "~> 0.26.1"}
+      {:flop, "~> 0.26.1"},
+      {:langchain, "~> 0.3.3"}
     ]
   end
   # Aliases are shortcuts or tasks specific to the current project.
