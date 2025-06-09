@@ -14,6 +14,8 @@ defmodule Nia.Application do
       {Phoenix.PubSub, name: Nia.PubSub},
       # Start the Finch HTTP client for sending emails
       {Finch, name: Nia.Finch},
+      # Start a dedicated Finch HTTP client for OpenAI
+      {Finch, name: Nia.Llm.finch_pool_name()},
       # Start a worker by calling: Nia.Worker.start_link(arg)
       # {Nia.Worker, arg},
       # Start to serve requests, typically the last entry
