@@ -15,8 +15,7 @@ import FocusBySelectorHook from "./focus-by-selector-hook";
 import MicrophoneHook from "./microphone-hook";
 import EditorJsHook from "./editorjs-hook";
 import AuroraHook from "./aurora-hook";
-
-// Either add hooks here or create a new file for each like ExampleHook
+import AudioPlayerHook from "./audio-player-hook";
 
 export default {
   AuroraHook,
@@ -36,4 +35,5 @@ export default {
   FocusBySelectorHook,
   MicrophoneHook,
   EditorJsHook,
+  AudioPlayer: AudioPlayerHook,
 };

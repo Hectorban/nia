@@ -1,51 +1,83 @@
 const MicrophoneHook = {
-    mounted() {
-        this.mediaRecorder = null;
+  mounted() {
+    this.mediaRecorder = null;
+    this.audioChunks = [];
+    this.uploadId = this.el.dataset.uploadId;
 
-        this.el.addEventListener("mousedown", (event) => {
-            this.startRecording();
+    this.el.addEventListener("mousedown", (event) => {
+      event.preventDefault();
+      if (this.el.disabled) return;
+      this.startRecording();
+      this.el.classList.add("ring-4", "ring-red-500");
+    });
+
+    this.el.addEventListener("mouseup", (event) => {
+      event.preventDefault();
+      if (this.el.disabled || !this.isRecording()) return;
+      this.stopRecording();
+      this.el.classList.remove("ring-4", "ring-red-500");
+    });
+
+    this.el.addEventListener("mouseleave", (event) => {
+      if (this.el.disabled || !this.isRecording()) return;
+      this.stopRecording();
+      this.el.classList.remove("ring-4", "ring-red-500");
+    });
+  },
+
+  startRecording() {
+    this.audioChunks = [];
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then((stream) => {
+        this.mediaRecorder = new MediaRecorder(stream);
+        this.mediaRecorder.addEventListener("dataavailable", (event) => {
+          if (event.data.size > 0) {
+            this.audioChunks.push(event.data);
+          }
         });
+        this.mediaRecorder.start();
+      })
+      .catch(err => {
+        console.error("Error accessing microphone:", err);
+      });
+  },
 
-        this.el.addEventListener("mouseup", (event) => {
-            this.stopRecording();
-        });
-    },
+  stopRecording() {
+    if (!this.mediaRecorder) return;
 
-    startRecording() {
-        this.audioChunks = [];
+    this.mediaRecorder.addEventListener("stop", () => {
+      if (this.audioChunks.length === 0) return;
 
-        navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
-            this.mediaRecorder = new MediaRecorder(stream);
+      const mimeType = this.mediaRecorder.mimeType || 'audio/wav';
+      const audioBlob = new Blob(this.audioChunks, { type: mimeType });
+      
+      const uploaderElement = document.querySelector(`input[type="file"][name="${this.uploadId}"]`);
 
-            this.mediaRecorder.addEventListener("dataavailable", (event) => {
-                if (event.data.size > 0) {
-                    this.audioChunks.push(event.data);
-                }
-            });
+      if (uploaderElement && uploaderElement.__uploader) {
+        const fileName = `audio_capture_${Date.now()}.${mimeType.split('/')[1] || 'wav'}`;
+        uploaderElement.__uploader.addFiles([new File([audioBlob], fileName, { type: mimeType })]);
+      } else {
+        console.error("Could not find LiveView uploader instance for ref:", this.uploadId);
+      }
 
-            this.mediaRecorder.start();
-        });
-    },
+      if (this.mediaRecorder && this.mediaRecorder.stream) {
+        this.mediaRecorder.stream.getTracks().forEach(track => track.stop());
+      }
+      this.mediaRecorder = null;
+    });
+    this.mediaRecorder.stop();
+  },
 
-    stopRecording() {
-        if (this) {
-            this.mediaRecorder.addEventListener("stop", (event) => {
-                if (this.audioChunks.length === 0) return;
+  isRecording() {
+    return this.mediaRecorder && this.mediaRecorder.state === "recording";
+  },
 
-                const audioBlob = new Blob(this.audioChunks);
-
-                audioBlob.arrayBuffer().then((buffer) => {
-                    this.upload("audio", [new Blob([buffer])]);
-                });
-            });
-
-            this.mediaRecorder.stop();
-        }
-    },
-
-    isRecording() {
-        return this.mediaRecorder && this.mediaRecorder.state === "recording";
-    },
+  destroyed() {
+    if (this.isRecording()) {
+      this.mediaRecorder.stream.getTracks().forEach(track => track.stop());
+      this.mediaRecorder = null;
+    }
+  }
 };
 
 export default MicrophoneHook;
