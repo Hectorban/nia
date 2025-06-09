@@ -1,40 +1,82 @@
-<.header>
-  Nia
-</.header>
+<.container class="py-8">
+  <.header class="mb-6 text-center">
+    <%= @page_title %>
+    <:subtitle :if={!@session_active && is_nil(@last_error)}>
+      Connecting to AI service...
+    </:subtitle>
+    <:subtitle :if={@session_active}>
+      Session active. Start speaking or typing.
+    </:subtitle>
+  </.header>
 
-<div class="max-w-3xl mx-auto p-4">
-  <div class="space-y-4">
-    <%= for message <- @messages do %>
-      <div class={["p-4 rounded-lg", if message.role == "user", do: "bg-blue-100", else: "bg-gray-100"]}>
-        <p><%= message.content %></p>
-      </div>
-    <% end %>
-
-    <%= if @waiting_for_response do %>
-      <div class="p-4 rounded-lg bg-gray-100">
-        <p><%= @response_text %></p>
-        <div class="mt-2 h-1 w-full bg-gray-300 animate-pulse"></div>
-      </div>
-    <% end %>
-  </div>
-
-  <div class="mt-8">
-    <div 
-      id="microphone-button"
-      phx-hook="MicrophoneHook"
-      data-upload-id={@uploads.audio.ref}
-      class="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center cursor-pointer hover:bg-red-600 transition-colors"
-      phx-click="start_recording"
-      phx-mouseup="stop_recording"
-      phx-mouseleave="cancel_recording"
-    >
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-      </svg>
+  <div class="max-w-2xl mx-auto">
+    <div :if={@last_error} class="mb-4">
+      <.alert kind={:danger} title="Error">
+        <%= @last_error %>
+      </.alert>
     </div>
 
-    <.form for={%{}} phx-submit="submit-audio" phx-change="validate">
-      <.live_file_input upload={@uploads.audio} class="hidden" />
-    </.form>
+    <div id="chat-messages" class="mb-4 p-4 border rounded-lg h-96 overflow-y-auto bg-gray-50 space-y-4">
+      <div :if={Enum.empty?(@messages) && @current_assistant_response == "" && @current_user_transcription == ""} class="text-center text-gray-500">
+        No messages yet.
+      </div>
+
+      <div :for={message <- @messages} class={"flex #{if message.role == "user", do: "justify-end", else: "justify-start"}"}>
+        <.card class={"max-w-[80%] #{if message.role == "user", do: "bg-blue-500 text-white", else: "bg-gray-200 text-gray-800"}"}>
+          <p class="text-sm"><%= message.content %></p>
+        </.card>
+      </div>
+      
+      <div :if={@current_user_transcription != ""} class="flex justify-end">
+        <.card class="max-w-[80%] bg-blue-300 text-white animate-pulse">
+          <p class="text-sm"><em><%= @current_user_transcription %></em></p>
+        </.card>
+      </div>
+      
+      <div :if={@current_assistant_response != ""} class="flex justify-start">
+        <.card class="max-w-[80%] bg-gray-200 text-gray-800 animate-pulse">
+          <p class="text-sm"><%= @current_assistant_response %></p>
+        </.card>
+      </div>
+    </div>
+
+    <div id="input-area" class="mb-4">
+      <.form for={:input_form} phx-submit="send_text_message" class="flex items-center gap-2">
+        <.text_input
+          field={:user_text_input}
+          name="user_text_input"
+          placeholder="Type your message..."
+          autocomplete="off"
+          disabled={!@session_active || @is_loading_llm}
+          container_class="flex-grow"
+        />
+        <.button
+          type="submit"
+          label="Send"
+          color={:primary}
+          disabled={!@session_active || @is_loading_llm}
+        />
+        <.icon_button
+          id="microphone-button"
+          name="hero-microphone"
+          phx-hook="MicrophoneHook"
+          data-upload-id={@uploads[@upload_id].ref}
+          disabled={!@session_active || @is_loading_llm}
+          aria-label="Record audio"
+          class="p-2"
+          tooltip="Record audio (Hold to speak)"
+        />
+      </.form>
+      <.live_file_input upload={@uploads[@upload_id]} class="hidden" />
+    </div>
+
+    <div :if={@session_active} class="text-center">
+      <.button phx-click="end_session_button" label="End Session" color={:danger} />
+    </div>
+    <div :if={!@session_active && !is_nil(@last_error)} class="text-center">
+      <.button phx-click="retry_connection_button" label="Retry Connection" color={:warning} />
+    </div>
+
+    <div id="audio-player" phx-hook="AudioPlayer" class="hidden"></div>
   </div>
-</div>
+</.container>

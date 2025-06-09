@@ -62,6 +62,7 @@ defmodule Nia.MixProject do
       {:petal_components, "~> 3.0"},
       {:money, "~> 1.14"},
       {:flop, "~> 0.26.1"},
+      {:websockex, "~> 0.4.3"},
     ]
   end
   # Aliases are shortcuts or tasks specific to the current project.
