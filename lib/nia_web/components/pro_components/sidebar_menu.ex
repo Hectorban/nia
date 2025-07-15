@@ -4,7 +4,7 @@ defmodule NiaWeb.SidebarMenu do
   """
 
   use Phoenix.Component, global_prefixes: ~w(x-)
-  use NiaComponents
+  use PetalComponents
 
   @doc """
   ## Menu items structure

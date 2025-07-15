@@ -5,9 +5,9 @@ defmodule NiaWeb.UserDropdownMenu do
 
   use Phoenix.Component
 
-  import NiaComponents.Avatar
-  import NiaComponents.Dropdown
-  import NiaComponents.Icon
+  import PetalComponents.Avatar
+  import PetalComponents.Dropdown
+  import PetalComponents.Icon
 
   attr :user_menu_items, :list, doc: "list of maps with keys :path, :icon (atom), :label, :method (atom)"
 

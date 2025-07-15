@@ -1,7 +1,7 @@
 defmodule NiaWeb.PageComponents do
   @moduledoc false
   use Phoenix.Component
-  use NiaComponents
+  use PetalComponents
 
   @doc """
   Allows you to have a heading on the left side, and some action buttons on the right (default slot)

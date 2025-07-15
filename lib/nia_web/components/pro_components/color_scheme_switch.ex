@@ -1,7 +1,7 @@
 defmodule NiaWeb.ColorSchemeSwitch do
   @moduledoc false
   use Phoenix.Component
-  use NiaComponents
+  use PetalComponents
 
   attr :class, :string, default: ""
 

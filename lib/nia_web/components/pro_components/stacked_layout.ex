@@ -7,7 +7,7 @@ defmodule NiaWeb.StackedLayout do
   The user menu is rendered using `NiaComponents.UserDropdownMenu.user_dropdown_menu/1`.
   """
   use Phoenix.Component, global_prefixes: ~w(x-)
-  use NiaComponents
+  use PetalComponents
 
   attr :current_page, :atom,
     required: true,

@@ -218,8 +218,8 @@ defmodule NiaWeb.DataTable do
   use Phoenix.Component
   use Gettext, backend: NiaWeb.Gettext
 
-  import NiaComponents.Pagination
-  import NiaComponents.Table
+  import PetalComponents.Pagination
+  import PetalComponents.Table
 
   alias NiaWeb.DataTable.Cell
   alias NiaWeb.DataTable.Filter

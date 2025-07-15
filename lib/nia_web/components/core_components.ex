@@ -2,7 +2,7 @@ defmodule NiaWeb.CoreComponents do
   @moduledoc false
   use Phoenix.Component
   use NiaWeb, :verified_routes
-  use NiaComponents
+  use PetalComponents
   use Gettext, backend: NiaWeb.Gettext
 
   import NiaWeb.ColorSchemeSwitch

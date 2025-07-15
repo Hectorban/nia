@@ -3,7 +3,7 @@ defmodule NiaWeb.FileUploadComponents do
   use NiaWeb, :component
   use Gettext, backend: NiaWeb.Gettext
 
-  import NiaComponents.Field
+  import PetalComponents.Field
 
   @doc """
   A file upload input. Shows the current image, a preview of the incoming image and a delete button.

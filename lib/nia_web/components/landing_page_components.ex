@@ -3,9 +3,7 @@ defmodule NiaWeb.LandingPageComponents do
   A set of components for use in a landing page.
   """
   use Phoenix.Component
-  use NiaComponents
-
-  alias NiaWeb.BillingComponents
+  use PetalComponents
 
   attr :image_src_light, :string, required: true
   attr :image_src_dark, :string, required: true
@@ -417,69 +415,6 @@ defmodule NiaWeb.LandingPageComponents do
     """
   end
 
-  attr :title, :string, required: true
-  attr :description, :string, required: true
-  attr :max_width, :string, default: "lg", values: ["sm", "md", "lg", "xl", "full"]
-  attr :products, :map, default: Nia.Billing.Plans.products()
-  attr :button_label, :string, default: "Sign up now"
-
-  def pricing(assigns) do
-    ~H"""
-    <section
-      id="pricing"
-      class="relative py-24 overflow-hidden text-gray-700 md:py-32 dark:text-white stagger-fade-in-animation"
-    >
-      <.particles_animation class="fade-in-animation z-99" />
-      <.container max_width={@max_width}>
-        <div class="mx-auto mb-16 text-center md:mb-20 lg:w-7/12 ">
-          <div class="mb-5 text-3xl font-bold leading-tight tracking-tight text-transparent sm:leading-tight lg:leading-relaxed md:mb-7 md:text-5xl fade-in-animation bg-clip-text bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 dark:from-white/5 dark:via-gray-300 dark:to-white">
-            {@title}
-          </div>
-          <div class="text-lg font-light leading-relaxed text-gray-500 dark:text-gray-400 md:text-2xl fade-in-animation">
-            {@description}
-          </div>
-        </div>
-
-        <div class="pb-32 fade-in-animation">
-          <div class="relative hidden w-full max-w-xs -z-50 dark:block md:max-w-5xl xl:max-w-7xl">
-            <div class="absolute lg:top-0 top-[5rem] rounded-full bg-primary-400 lg:-left-4 w-[30rem] h-[30rem] blur-3xl filter opacity-10 animate-blob mix-blend-lighten">
-            </div>
-            <div class="absolute rounded-full lg:top-4 top-[40rem] bg-primary-600 lg:left-32 w-[40rem] h-[40rem] filter blur-3xl opacity-10 animate-blob mix-blend-lighten animation-delay-1000">
-            </div>
-            <div class="absolute rounded-full bg-primary-500 top-[60rem] lg:top-16 lg:-right-4 w-[30rem] h-[30rem] blur-3xl filter opacity-10 animate-blob mix-blend-lighten animation-delay-2000">
-            </div>
-            <div class="absolute rounded-full bg-secondary-600 top-[10rem] right-[5rem] lg:top-12 blur-3xl lg:right-56 w-[40rem] h-[40rem] filter opacity-10 animate-blob mix-blend-lighten animation-delay-3000">
-            </div>
-            <div class="absolute rounded-full bg-secondary-500 blur-3xl top-[80rem] lg:top-8 lg:left-96 w-[25rem] h-[25rem] filter opacity-10 animate-blob mix-blend-lighten animation-delay-4000">
-            </div>
-          </div>
-
-          <BillingComponents.pricing_panels_container panels={length(@products)} interval_selector>
-            <%= for product <- @products do %>
-              <BillingComponents.pricing_panel
-                label={product.name}
-                description={product.description}
-                features={product.features}
-                most_popular={Map.get(product, :most_popular)}
-                class="fade-in-animation"
-              >
-                <%= for plan <- product.plans do %>
-                  <BillingComponents.item_price
-                    id={"pricing-plan-#{plan.id}"}
-                    interval={plan.interval}
-                    amount={plan.amount}
-                    button_label={@button_label}
-                    is_public
-                  />
-                <% end %>
-              </BillingComponents.pricing_panel>
-            <% end %>
-          </BillingComponents.pricing_panels_container>
-        </div>
-      </.container>
-    </section>
-    """
-  end
 
   attr :quantity, :integer, default: 25
   attr :class, :string, default: nil

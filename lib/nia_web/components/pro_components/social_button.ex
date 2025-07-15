@@ -2,7 +2,7 @@ defmodule NiaWeb.SocialButton do
   @moduledoc false
   use Phoenix.Component
 
-  import NiaComponents.Link
+  import PetalComponents.Link
 
   attr(:class, :string, default: "")
 

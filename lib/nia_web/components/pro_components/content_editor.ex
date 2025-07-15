@@ -2,10 +2,10 @@ defmodule NiaWeb.ContentEditor do
   @moduledoc false
   use Phoenix.Component
 
-  import NiaComponents.Alert
-  import NiaComponents.Table
+  import PetalComponents.Alert
+  import PetalComponents.Table
 
-  alias NiaComponents.Field
+  alias PetalComponents.Field
   alias Nia.Extensions.MapExt
 
   attr :id, :any,

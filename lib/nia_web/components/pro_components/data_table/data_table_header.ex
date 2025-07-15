@@ -3,12 +3,12 @@ defmodule NiaWeb.DataTable.Header do
   use Phoenix.Component
   use Gettext, backend: NiaWeb.Gettext
 
-  import NiaComponents.Dropdown
-  import NiaComponents.Field
-  import NiaComponents.Form
-  import NiaComponents.Icon
-  import NiaComponents.Link
-  import NiaComponents.Table
+  import PetalComponents.Dropdown
+  import PetalComponents.Field
+  import PetalComponents.Form
+  import PetalComponents.Icon
+  import PetalComponents.Link
+  import PetalComponents.Table
   import Phoenix.HTML.Form
 
   def render(assigns) do

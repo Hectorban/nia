@@ -7,7 +7,7 @@ defmodule NiaWeb.SidebarLayout do
   Note that in order to utilise the collapsible sidebar feature, you must install the Alpine Persist plugin. See https://alpinejs.dev/plugins/persist for more information.
   """
   use Phoenix.Component, global_prefixes: ~w(x-)
-  use NiaComponents
+  use PetalComponents
 
   import NiaWeb.SidebarMenu
 

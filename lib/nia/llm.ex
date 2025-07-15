@@ -199,8 +199,7 @@ defmodule Nia.Llm do
   end
 
   defp handle_openai_event(event, state) do
-    Logger.warn("Unhandled OpenAI event type: #{get_in(event, ["type"])}")
+    Logger.warning("Unhandled OpenAI event type: #{get_in(event, ["type"])}")
     state
   end
-end
 end

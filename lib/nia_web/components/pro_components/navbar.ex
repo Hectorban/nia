@@ -4,11 +4,11 @@ defmodule NiaWeb.Navbar do
   """
   use Phoenix.Component
 
-  import NiaComponents.Avatar
-  import NiaComponents.Container
-  import NiaComponents.Icon
-  import NiaComponents.Link
-  import NiaComponents.UserDropdownMenu
+  import PetalComponents.Avatar
+  import PetalComponents.Container
+  import PetalComponents.Icon
+  import PetalComponents.Link
+  import PetalComponents.UserDropdownMenu
 
   attr :current_page, :atom, required: true
   attr :main_menu_items, :list, default: []

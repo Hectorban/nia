@@ -46,7 +46,7 @@ config :tailwind,
   version: "4.0.9",
   nia: [
     args: ~w(
-      --input=assets/css/app.css
+      --input=css/app.css
       --output=../priv/static/assets/app.css
     ),
     cd: Path.expand("../assets", __DIR__)

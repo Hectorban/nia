@@ -2,7 +2,7 @@ defmodule NiaWeb.DataTable.Cell do
   @moduledoc false
   use Phoenix.Component
 
-  import NiaComponents.Button
+  import PetalComponents.Button
 
   def render(%{column: %{renderer: :checkbox}} = assigns) do
     ~H"""

@@ -7,7 +7,7 @@ defmodule NiaWeb.RouteTree do
   """
 
   use Phoenix.Component
-  use NiaComponents
+  use PetalComponents
 
   attr(:router, :any, doc: "Your application router module")
 
