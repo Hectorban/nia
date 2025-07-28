@@ -1,0 +1,19 @@
+@charset "utf-8";
+
+$color-text: white;
+$blue: #2894CD;
+$green: #61AD4A;
+$message-content-incoming-bg-color: $blue;
+$message-content-outgoing-bg-color: #444;
+$color-secondary: #555;
+$message-input-bg-color: white;
+$message-input-content-editor-wrapper-bg-color: white;
+$message-input-content-editor-color: black;
+$button-attachment-color: white;
+$button-send-color: $green;
+$message-group-header-padding: 0.5rem;
+$message-list-scroll-wrapper-padding: 1.2em 1.2em 0 0.8em;
+
+@import "@chatscope/chat-ui-kit-styles/themes/default/variables";
+
+@import "@chatscope/chat-ui-kit-styles/themes/default/main";

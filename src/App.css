@@ -1,0 +1,38 @@
+/* App-specific styles - cleaned up to avoid interfering with MUI */
+
+/* Logo animations */
+.logo.vite:hover {
+  filter: drop-shadow(0 0 2em #747bff);
+}
+
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafb);
+}
+
+.logo.tauri:hover {
+  filter: drop-shadow(0 0 2em #24c8db);
+}
+
+/* App-specific classes */
+.container {
+  margin: 0;
+  padding: 0;
+  height: calc(100vh - 64px); /* 64px is default MUI AppBar height */
+  overflow: hidden;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: 0.75s;
+}
+
+.row {
+  display: flex;
+  justify-content: center;
+}
+
+#greet-input {
+  margin-right: 5px;
+}
