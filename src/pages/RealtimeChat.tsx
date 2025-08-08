@@ -7,6 +7,7 @@ import ChatView from '../components/ChatView';
 import SessionCostTracker from '../components/SessionCostTracker';
 import { useOpenAISettings } from '../hooks/useOpenAISettings';
 import { useState, useEffect } from 'react';
+import { MessageInput } from "@chatscope/chat-ui-kit-react";
 import "@chatscope/chat-ui-kit-styles/dist/default/styles.min.css";
 import '../chat.scss';
 
@@ -16,6 +17,8 @@ const RealtimeChat = () => {
     conversationLog,
     liveUserTranscript,
     liveAgentTranscript,
+    lastUserTranscript,
+    lastAgentTranscript,
     audioInputDevices,
     audioOutputDevices,
     selectedMicId,
@@ -34,10 +37,19 @@ const RealtimeChat = () => {
     handleConnect,
     handleDisconnect,
     audioEl,
+    sendTextMessage,
   } = useRealtimeChat();
 
   const { settings } = useOpenAISettings();
   const [showApiKeyWarning, setShowApiKeyWarning] = useState(false);
+  const [messageInput, setMessageInput] = useState('');
+
+  const handleSendMessage = () => {
+    if (messageInput.trim() && isConnected) {
+      sendTextMessage(messageInput.trim());
+      setMessageInput('');
+    }
+  };
 
   useEffect(() => {
     setShowApiKeyWarning(!settings?.apiKey);
@@ -70,7 +82,7 @@ const RealtimeChat = () => {
       
       {/* Main Content */}
       <Box sx={{ display: 'flex', height: '100%', width: '100%', boxSizing: 'border-box', p: 2, gap: 2, overflow: 'hidden' }}>
-        {/* Column 1: User Section */}
+        {/* Column 1: Agent Section */}
       <Box sx={{ 
         flex: 1, 
         display: 'flex', 
@@ -79,21 +91,21 @@ const RealtimeChat = () => {
         minWidth: 0, // Prevent flex item from overflowing
         height: '100%'
       }}>
-        {/* User Transcription */}
+        {/* Agent Transcription */}
         <Box sx={{ flex: 1, overflow: 'auto', p: 2, bgcolor: 'background.paper', borderRadius: 1, mb: 2 }}>
-          <Typography variant="h6" gutterBottom>Your Transcript</Typography>
-          <Typography variant="body2" sx={{ fontStyle: liveUserTranscript ? 'italic' : 'normal' }}>
-            {liveUserTranscript || 'Waiting for speech...'}
+          <Typography variant="h6" gutterBottom>AI Transcript</Typography>
+          <Typography variant="body2" sx={{ fontStyle: liveAgentTranscript ? 'italic' : 'normal' }}>
+            {liveAgentTranscript || lastAgentTranscript || 'Waiting for response...'}
           </Typography>
         </Box>
 
-        {/* User Audio Visualization */}
+        {/* Agent Audio Visualization */}
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 2 }}>
-          {userMediaRecorder && (
+          {agentMediaRecorder && (
             <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="h6" gutterBottom>You</Typography>
+              <Typography variant="h6" gutterBottom>AI Agent</Typography>
               <LiveAudioVisualizer
-                mediaRecorder={userMediaRecorder}
+                mediaRecorder={agentMediaRecorder}
                 width={200}
                 height={75}
               />
@@ -101,18 +113,12 @@ const RealtimeChat = () => {
           )}
         </Box>
 
-        {/* User Device Settings */}
+        {/* Agent Device Settings (Speaker only for AI) */}
         <Box sx={{ mt: 'auto' }}>
-          <DeviceSettings
-            audioInputDevices={audioInputDevices}
-            audioOutputDevices={audioOutputDevices}
-            selectedMicId={selectedMicId}
-            selectedSpeakerId={selectedSpeakerId}
-            onMicChange={handleMicChange}
-            onSpeakerChange={handleSpeakerChange}
-            volume={volume}
-            onVolumeChange={handleVolumeChange}
-          />
+          <Typography variant="subtitle2" sx={{ mb: 1 }}>AI Audio Output</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Speaker: {audioOutputDevices.find(d => d.deviceId === selectedSpeakerId)?.label || 'Default'}
+          </Typography>
         </Box>
       </Box>
 
@@ -150,9 +156,22 @@ const RealtimeChat = () => {
           liveUserTranscript={liveUserTranscript}
           liveAgentTranscript={liveAgentTranscript}
         />
+        
+        {/* Message Input */}
+        <Box sx={{ mt: 2 }}>
+          <MessageInput
+            placeholder={isConnected ? "Type a message or paste a link..." : "Connect to start chatting"}
+            value={messageInput}
+            onChange={(_innerHtml, textContent) => setMessageInput(textContent)}
+            onSend={handleSendMessage}
+            disabled={!isConnected}
+            sendDisabled={!isConnected || !messageInput.trim()}
+            attachButton={false}
+          />
+        </Box>
       </Box>
 
-      {/* Column 3: Agent Section */}
+      {/* Column 3: User Section */}
       <Box sx={{ 
         flex: 1, 
         display: 'flex', 
@@ -161,21 +180,21 @@ const RealtimeChat = () => {
         minWidth: 0, // Prevent flex item from overflowing
         height: '100%'
       }}>
-        {/* Agent Transcription */}
+        {/* User Transcription */}
         <Box sx={{ flex: 1, overflow: 'auto', p: 2, bgcolor: 'background.paper', borderRadius: 1, mb: 2 }}>
-          <Typography variant="h6" gutterBottom>AI Transcript</Typography>
-          <Typography variant="body2" sx={{ fontStyle: liveAgentTranscript ? 'italic' : 'normal' }}>
-            {liveAgentTranscript || 'Waiting for response...'}
+          <Typography variant="h6" gutterBottom>Your Transcript</Typography>
+          <Typography variant="body2" sx={{ fontStyle: liveUserTranscript ? 'italic' : 'normal' }}>
+            {liveUserTranscript || lastUserTranscript || 'Waiting for speech...'}
           </Typography>
         </Box>
 
-        {/* Agent Audio Visualization */}
+        {/* User Audio Visualization */}
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 2 }}>
-          {agentMediaRecorder && (
+          {userMediaRecorder && (
             <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="h6" gutterBottom>AI Agent</Typography>
+              <Typography variant="h6" gutterBottom>You</Typography>
               <LiveAudioVisualizer
-                mediaRecorder={agentMediaRecorder}
+                mediaRecorder={userMediaRecorder}
                 width={200}
                 height={75}
               />
@@ -183,12 +202,18 @@ const RealtimeChat = () => {
           )}
         </Box>
 
-        {/* Agent Device Settings (Speaker only for AI) */}
+        {/* User Device Settings */}
         <Box sx={{ mt: 'auto' }}>
-          <Typography variant="subtitle2" sx={{ mb: 1 }}>AI Audio Output</Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Speaker: {audioOutputDevices.find(d => d.deviceId === selectedSpeakerId)?.label || 'Default'}
-          </Typography>
+          <DeviceSettings
+            audioInputDevices={audioInputDevices}
+            audioOutputDevices={audioOutputDevices}
+            selectedMicId={selectedMicId}
+            selectedSpeakerId={selectedSpeakerId}
+            onMicChange={handleMicChange}
+            onSpeakerChange={handleSpeakerChange}
+            volume={volume}
+            onVolumeChange={handleVolumeChange}
+          />
         </Box>
       </Box>
     </Box>

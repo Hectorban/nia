@@ -19,6 +19,7 @@ import {
 } from '@mui/material';
 import { PlayArrow, Stop, CheckCircle, Error as ErrorIcon } from '@mui/icons-material';
 import { useSettings } from '../hooks/useSettings';
+import { ElevenLabsService, ElevenLabsVoice } from '../services/elevenlabs';
 
 export const Configuration: React.FC = () => {
   const { settings, updateSettings } = useSettings();
@@ -27,12 +28,20 @@ export const Configuration: React.FC = () => {
   const [prompt, setPrompt] = useState('');
   const [darkMode, setDarkMode] = useState(false);
   const [model, setModel] = useState('gpt-4o-realtime-preview');
+  const [firecrawlApiKey, setFirecrawlApiKey] = useState('');
   const [isTestingVoice, setIsTestingVoice] = useState(false);
   const [testError, setTestError] = useState<string | null>(null);
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
   const [isValidatingKey, setIsValidatingKey] = useState(false);
   const [apiKeyStatus, setApiKeyStatus] = useState<'valid' | 'invalid' | 'unchecked'>('unchecked');
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [elevenlabsApiKey, setElevenlabsApiKey] = useState('');
+  const [ttsProvider, setTtsProvider] = useState<'openai' | 'elevenlabs'>('openai');
+  const [elevenlabsVoiceId, setElevenlabsVoiceId] = useState('');
+  const [elevenlabsVoices, setElevenlabsVoices] = useState<ElevenLabsVoice[]>([]);
+  const [isLoadingVoices, setIsLoadingVoices] = useState(false);
+  const [elevenlabsService] = useState(new ElevenLabsService());
+  const [language, setLanguage] = useState('es');
 
   useEffect(() => {
     if (settings) {
@@ -41,19 +50,29 @@ export const Configuration: React.FC = () => {
       setPrompt(settings.prompt || '');
       setDarkMode(settings.darkMode || false);
       setModel(settings.model || 'gpt-4o-realtime-preview');
+      setFirecrawlApiKey(settings.firecrawlApiKey || '');
+      setElevenlabsApiKey(settings.elevenlabsApiKey || '');
+      setTtsProvider(settings.ttsProvider || 'openai');
+      setElevenlabsVoiceId(settings.elevenlabsVoiceId || '');
+      setLanguage(settings.language || 'es');
       // Reset validation status when settings change
       setApiKeyStatus('unchecked');
       setValidationError(null);
     }
   }, [settings]);
 
-  const handleSave = () => {
-    updateSettings({
-      apiKey,
-      voice,
-      prompt,
-      darkMode,
-      model
+  const handleSave = async () => {
+    await updateSettings({ 
+      apiKey, 
+      voice, 
+      prompt, 
+      darkMode, 
+      model, 
+      firecrawlApiKey,
+      elevenlabsApiKey,
+      ttsProvider,
+      elevenlabsVoiceId,
+      language
     });
   };
 
@@ -153,6 +172,82 @@ export const Configuration: React.FC = () => {
     }
   };
 
+  const loadElevenlabsVoices = async () => {
+    console.log('Loading ElevenLabs voices, API key present:', !!elevenlabsApiKey);
+    
+    if (!elevenlabsApiKey) {
+      console.log('No API key, clearing voices');
+      setElevenlabsVoices([]);
+      return;
+    }
+
+    setIsLoadingVoices(true);
+    try {
+      elevenlabsService.setApiKey(elevenlabsApiKey);
+      console.log('ElevenLabs service API key set, fetching voices...');
+      const voices = await elevenlabsService.getVoices();
+      console.log('Loaded voices:', voices.length, voices.map(v => ({ id: v.voice_id, name: v.name })));
+      setElevenlabsVoices(voices);
+    } catch (error) {
+      console.error('Failed to load ElevenLabs voices:', error);
+      setElevenlabsVoices([]);
+    } finally {
+      setIsLoadingVoices(false);
+    }
+  };
+
+  const testElevenlabsVoice = async () => {
+    console.log('Testing ElevenLabs voice:', {
+      apiKey: elevenlabsApiKey ? 'Set' : 'Not set',
+      voiceId: elevenlabsVoiceId,
+      voicesAvailable: elevenlabsVoices.length
+    });
+    
+    if (!elevenlabsApiKey || !elevenlabsVoiceId) {
+      const errorMsg = 'Please enter ElevenLabs API key and select a voice first';
+      console.log('Test failed:', errorMsg);
+      setTestError(errorMsg);
+      return;
+    }
+
+    setIsTestingVoice(true);
+    setTestError(null);
+
+    // Stop any currently playing audio
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.src = '';
+      setCurrentAudio(null);
+    }
+
+    try {
+      elevenlabsService.setApiKey(elevenlabsApiKey);
+      const selectedVoice = elevenlabsVoices.find(v => v.voice_id === elevenlabsVoiceId);
+      const testText = language === 'es' 
+        ? `¡Hola! Esta es una prueba de la voz ${selectedVoice?.name || 'seleccionada'}. Soy tu asistente de IA y estoy emocionado de chatear contigo.`
+        : `Hello! This is a test of the ${selectedVoice?.name || 'selected'} voice. I'm your AI assistant and I'm excited to chat with you.`;
+      
+      const audio = await elevenlabsService.playText(testText, elevenlabsVoiceId, undefined, {
+        language: language
+      });
+      setCurrentAudio(audio);
+    } catch (error) {
+      console.error('Failed to test ElevenLabs voice:', error);
+      setTestError(`Failed to test voice: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsTestingVoice(false);
+    }
+  };
+
+  // Load ElevenLabs voices when API key changes
+  useEffect(() => {
+    if (elevenlabsApiKey) {
+      loadElevenlabsVoices();
+    } else {
+      setElevenlabsVoices([]);
+    }
+  }, [elevenlabsApiKey]);
+
   return (
     <Box sx={{ 
       height: '100%',
@@ -239,33 +334,138 @@ export const Configuration: React.FC = () => {
             />
           )}
         </Box>
+        <TextField
+          id="firecrawlApiKey"
+          label="Firecrawl API Key (Optional)"
+          type="password"
+          value={firecrawlApiKey}
+          onChange={(e) => setFirecrawlApiKey(e.target.value)}
+          fullWidth
+          variant="outlined"
+          size="small"
+          helperText="Required for AI to read web links. Get your API key from firecrawl.dev"
+        />
+        
+        {/* TTS Provider Selection */}
+        <FormControl fullWidth size="small">
+          <InputLabel id="tts-provider-label">Text-to-Speech Provider</InputLabel>
+          <Select
+            labelId="tts-provider-label"
+            id="tts-provider"
+            value={ttsProvider}
+            label="Text-to-Speech Provider"
+            onChange={(e) => setTtsProvider(e.target.value as 'openai' | 'elevenlabs')}
+          >
+            <MenuItem value="openai">OpenAI TTS</MenuItem>
+            <MenuItem value="elevenlabs">ElevenLabs TTS</MenuItem>
+          </Select>
+        </FormControl>
+
+        {/* Language Selection */}
+        {ttsProvider === 'elevenlabs' && (
+          <FormControl fullWidth size="small">
+            <InputLabel id="language-label">Language</InputLabel>
+            <Select
+              labelId="language-label"
+              id="language"
+              value={language}
+              label="Language"
+              onChange={(e) => setLanguage(e.target.value)}
+            >
+              <MenuItem value="es">Spanish (Español)</MenuItem>
+              <MenuItem value="en">English</MenuItem>
+              <MenuItem value="fr">French (Français)</MenuItem>
+              <MenuItem value="de">German (Deutsch)</MenuItem>
+              <MenuItem value="it">Italian (Italiano)</MenuItem>
+              <MenuItem value="pt">Portuguese (Português)</MenuItem>
+            </Select>
+          </FormControl>
+        )}
+
+        {/* ElevenLabs API Key */}
+        {ttsProvider === 'elevenlabs' && (
+          <TextField
+            id="elevenlabsApiKey"
+            label="ElevenLabs API Key"
+            type="password"
+            value={elevenlabsApiKey}
+            onChange={(e) => setElevenlabsApiKey(e.target.value)}
+            fullWidth
+            variant="outlined"
+            size="small"
+            helperText="Required for ElevenLabs TTS. Get your API key from elevenlabs.io"
+          />
+        )}
+
         <Box>
           <FormControl fullWidth size="small">
-            <InputLabel id="voice-label">AI Voice</InputLabel>
+            <InputLabel id="voice-label">
+              {ttsProvider === 'elevenlabs' ? 'ElevenLabs Voice' : 'OpenAI Voice'}
+            </InputLabel>
             <Select
               labelId="voice-label"
               id="voice"
-              value={voice}
-              label="AI Voice"
-              onChange={(e) => setVoice(e.target.value)}
+              value={ttsProvider === 'elevenlabs' ? (elevenlabsVoiceId || '') : (voice || '')}
+              label={ttsProvider === 'elevenlabs' ? 'ElevenLabs Voice' : 'OpenAI Voice'}
+              onChange={(e) => {
+                console.log('Voice selection changed:', {
+                  provider: ttsProvider,
+                  newValue: e.target.value,
+                  currentElevenlabsVoiceId: elevenlabsVoiceId,
+                  currentVoice: voice
+                });
+                if (ttsProvider === 'elevenlabs') {
+                  setElevenlabsVoiceId(e.target.value);
+                  console.log('Set ElevenLabs voice ID to:', e.target.value);
+                } else {
+                  setVoice(e.target.value);
+                  console.log('Set OpenAI voice to:', e.target.value);
+                }
+              }}
+              disabled={ttsProvider === 'elevenlabs' && isLoadingVoices}
             >
-              <MenuItem value="alloy">Alloy</MenuItem>
-              <MenuItem value="echo">Echo</MenuItem>
-              <MenuItem value="fable">Fable</MenuItem>
-              <MenuItem value="onyx">Onyx</MenuItem>
-              <MenuItem value="nova">Nova</MenuItem>
-              <MenuItem value="shimmer">Shimmer</MenuItem>
+              {ttsProvider === 'elevenlabs' ? (
+                isLoadingVoices ? (
+                  <MenuItem key="loading" disabled>
+                    <CircularProgress size={20} sx={{ mr: 1 }} />
+                    Loading voices...
+                  </MenuItem>
+                ) : elevenlabsVoices.length > 0 ? (
+                  elevenlabsVoices.map((voice) => (
+                    <MenuItem key={voice.voice_id} value={voice.voice_id}>
+                      {voice.name} ({voice.category})
+                    </MenuItem>
+                  ))
+                ) : (
+                  <MenuItem key="no-voices" disabled>
+                    {elevenlabsApiKey ? 'No voices available' : 'Enter API key to load voices'}
+                  </MenuItem>
+                )
+              ) : (
+                <>
+                  <MenuItem key="alloy" value="alloy">Alloy</MenuItem>
+                  <MenuItem key="echo" value="echo">Echo</MenuItem>
+                  <MenuItem key="fable" value="fable">Fable</MenuItem>
+                  <MenuItem key="onyx" value="onyx">Onyx</MenuItem>
+                  <MenuItem key="nova" value="nova">Nova</MenuItem>
+                  <MenuItem key="shimmer" value="shimmer">Shimmer</MenuItem>
+                </>
+              )}
             </Select>
           </FormControl>
           <Box sx={{ display: 'flex', alignItems: 'center', mt: 1, gap: 1 }}>
             <Button
               variant="outlined"
               size="small"
-              onClick={testVoice}
-              disabled={isTestingVoice || !apiKey}
+              onClick={ttsProvider === 'elevenlabs' ? testElevenlabsVoice : testVoice}
+              disabled={
+                isTestingVoice || 
+                (ttsProvider === 'openai' && !apiKey) || 
+                (ttsProvider === 'elevenlabs' && (!elevenlabsApiKey || !elevenlabsVoiceId))
+              }
               startIcon={isTestingVoice ? <CircularProgress size={16} /> : <PlayArrow />}
             >
-              {isTestingVoice ? 'Testing...' : 'Test Voice'}
+              {isTestingVoice ? 'Testing...' : `Test ${ttsProvider === 'elevenlabs' ? 'ElevenLabs' : 'OpenAI'} Voice`}
             </Button>
             {currentAudio && (
               <IconButton

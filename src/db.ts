@@ -17,9 +17,18 @@ export interface Settings {
   selectedSpeakerId?: string | null;
   darkMode?: boolean;
   model?: string;
+  firecrawlApiKey?: string;
+  // ElevenLabs settings
+  elevenlabsApiKey?: string;
+  ttsProvider?: 'openai' | 'elevenlabs';
+  elevenlabsVoiceId?: string;
+  language?: string;
+  // VTube Studio settings
+  vtubeStudioAuthAccepted?: boolean;
+  vtubeStudioAuthToken?: string;
 }
 
-export type OpenAISettings = Pick<Settings, 'apiKey' | 'voice' | 'prompt' | 'darkMode' | 'model'>;
+export type OpenAISettings = Pick<Settings, 'apiKey' | 'voice' | 'prompt' | 'darkMode' | 'model' | 'firecrawlApiKey' | 'elevenlabsApiKey' | 'ttsProvider' | 'elevenlabsVoiceId' | 'language'>;
 
 /**
  * Gets the database instance, creating it if it doesn't exist.
@@ -50,6 +59,10 @@ export async function getSettings(): Promise<Settings> {
       else if (row.key === 'selectedSpeakerId') settings.selectedSpeakerId = row.value;
       else if (row.key === 'darkMode') settings.darkMode = JSON.parse(row.value);
       else if (row.key === 'model') settings.model = row.value;
+      else if (row.key === 'firecrawlApiKey') settings.firecrawlApiKey = row.value;
+      else if (row.key === 'elevenlabsApiKey') settings.elevenlabsApiKey = row.value;
+      else if (row.key === 'ttsProvider') settings.ttsProvider = row.value as 'openai' | 'elevenlabs';
+      else if (row.key === 'elevenlabsVoiceId') settings.elevenlabsVoiceId = row.value;
     } catch (error) {
       console.error(`Failed to parse setting ${row.key}:`, error);
     }
@@ -107,13 +120,18 @@ export async function saveDeviceSettings(settings: DeviceSettings) {
  */
 export async function getOpenAISettings(): Promise<OpenAISettings | null> {
   const settings = await getSettings();
-  if (settings.apiKey || settings.voice || settings.prompt || settings.model) {
+  if (settings.apiKey || settings.voice || settings.prompt || settings.model || settings.elevenlabsApiKey || settings.ttsProvider) {
     return {
       apiKey: settings.apiKey || '',
       voice: settings.voice || 'alloy',
       prompt: settings.prompt,
       darkMode: settings.darkMode || false,
-      model: settings.model || 'gpt-4o-realtime-preview'
+      model: settings.model || 'gpt-4o-realtime-preview',
+      firecrawlApiKey: settings.firecrawlApiKey,
+      // Include ElevenLabs settings
+      elevenlabsApiKey: settings.elevenlabsApiKey,
+      ttsProvider: settings.ttsProvider || 'openai',
+      elevenlabsVoiceId: settings.elevenlabsVoiceId
     };
   }
   return null;
@@ -124,4 +142,33 @@ export async function getOpenAISettings(): Promise<OpenAISettings | null> {
  */
 export async function saveOpenAISettings(settings: Partial<OpenAISettings>) {
   await saveSettings(settings);
+}
+
+/**
+ * Retrieves VTube Studio authentication settings from the database.
+ */
+export async function getVTubeStudioSettings(): Promise<{ authAccepted: boolean; authToken: string | null }> {
+  const settings = await getSettings();
+  return {
+    authAccepted: settings.vtubeStudioAuthAccepted || false,
+    authToken: settings.vtubeStudioAuthToken || null
+  };
+}
+
+/**
+ * Saves VTube Studio authentication acceptance and token to the database.
+ */
+export async function saveVTubeStudioAuth(authAccepted: boolean, authToken: string | null = null) {
+  await saveSetting('vtubeStudioAuthAccepted', authAccepted);
+  if (authToken) {
+    await saveSetting('vtubeStudioAuthToken', authToken);
+  }
+}
+
+/**
+ * Clears VTube Studio authentication data from the database.
+ */
+export async function clearVTubeStudioAuth() {
+  await saveSetting('vtubeStudioAuthAccepted', false);
+  await saveSetting('vtubeStudioAuthToken', null);
 }

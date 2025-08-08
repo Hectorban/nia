@@ -14,7 +14,8 @@
   ],
   "remote": {
     "urls": [
-      "https://api.openai.com/v1/realtime*"
+      "https://api.openai.com/v1/realtime*",
+      "https://api.firecrawl.dev/*"
     ]
   }
 }

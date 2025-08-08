@@ -1,7 +1,7 @@
 {
   "name": "nia",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.3.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,9 +12,12 @@
   "dependencies": {
     "@chatscope/chat-ui-kit-react": "^2.1.1",
     "@chatscope/chat-ui-kit-styles": "^1.4.0",
+    "@elevenlabs/elevenlabs-js": "^2.7.0",
+    "@elevenlabs/react": "^0.4.5",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@fontsource/roboto": "^5.2.6",
+    "@mendable/firecrawl-js": "^1.29.3",
     "@mui/icons-material": "^7.2.0",
     "@mui/material": "^7.2.0",
     "@openai/realtime-api-beta": "github:openai/openai-realtime-api-beta",
