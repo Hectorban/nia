@@ -23,35 +23,40 @@ const SessionCostTracker: React.FC<SessionCostTrackerProps> = ({
   const [elapsedTime, setElapsedTime] = useState('00:00');
   const [currentCost, setCurrentCost] = useState(0);
 
-  // Pricing per million tokens (audio)
-  const audioTokenPricing = {
+  // Pricing per million tokens
+  const tokenPricing = {
+    'gpt-realtime': {
+      input: 4,    // $4 per 1M input tokens
+      cachedInput: 0.5, // $0.50 per 1M cached input tokens
+      output: 16,  // $16 per 1M output tokens
+    },
+    'gpt-realtime-mini': {
+      input: 0.6,  // $0.60 per 1M input tokens
+      cachedInput: 0.06, // $0.06 per 1M cached input tokens
+      output: 2.4, // $2.40 per 1M output tokens
+    },
+    // Legacy model names (fallback)
     'gpt-4o-realtime-preview': {
-      input: 40,  // $40 per 1M input audio tokens
-      output: 80, // $80 per 1M output audio tokens
+      input: 4,
+      cachedInput: 0.5,
+      output: 16,
     },
     'gpt-4o-mini-realtime-preview': {
-      input: 10,  // $10 per 1M input audio tokens
-      output: 20, // $20 per 1M output audio tokens
+      input: 0.6,
+      cachedInput: 0.06,
+      output: 2.4,
     },
   };
 
   // Calculate cost based on token usage
   useEffect(() => {
-    const pricing = audioTokenPricing[selectedModel as keyof typeof audioTokenPricing] || audioTokenPricing['gpt-4o-realtime-preview'];
+    const pricing = tokenPricing[selectedModel as keyof typeof tokenPricing] || tokenPricing['gpt-realtime'];
     
-    // Calculate audio token costs
-    const inputAudioCost = (tokenUsage.inputAudioTokens / 1_000_000) * pricing.input;
-    const outputAudioCost = (tokenUsage.outputAudioTokens / 1_000_000) * pricing.output;
+    // Calculate costs (same pricing for audio and text tokens now)
+    const inputCost = ((tokenUsage.inputAudioTokens + tokenUsage.inputTextTokens) / 1_000_000) * pricing.input;
+    const outputCost = ((tokenUsage.outputAudioTokens + tokenUsage.outputTextTokens) / 1_000_000) * pricing.output;
     
-    // For text tokens, using the text pricing from docs
-    const textPricing = selectedModel === 'gpt-4o-mini-realtime-preview' 
-      ? { input: 0.6, output: 2.4 }  // $0.60/$2.40 per 1M tokens
-      : { input: 5, output: 20 };    // $5/$20 per 1M tokens
-    
-    const inputTextCost = (tokenUsage.inputTextTokens / 1_000_000) * textPricing.input;
-    const outputTextCost = (tokenUsage.outputTextTokens / 1_000_000) * textPricing.output;
-    
-    const totalCost = inputAudioCost + outputAudioCost + inputTextCost + outputTextCost;
+    const totalCost = inputCost + outputCost;
     setCurrentCost(totalCost);
   }, [tokenUsage, selectedModel]);
 

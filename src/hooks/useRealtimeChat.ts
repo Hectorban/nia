@@ -27,7 +27,7 @@ export const useRealtimeChat = () => {
     inputTextTokens: 0,
     outputTextTokens: 0,
   });
-  const [selectedModel, setSelectedModel] = useState('gpt-4o-realtime-preview');
+  const [selectedModel, setSelectedModel] = useState('gpt-realtime');
   const [vtubeStudioConnected, setVtubeStudioConnected] = useState(false);
   const [elevenlabsAudio, setElevenlabsAudio] = useState<HTMLAudioElement | null>(null);
   const [isStreamingTTS, setIsStreamingTTS] = useState(false);
@@ -50,7 +50,7 @@ export const useRealtimeChat = () => {
         const durationSeconds = Math.floor((endTime - sessionStartTime) / 1000);
         
         // Calculate total cost
-        const totalCost = calculateSessionCost(tokenUsage);
+        const totalCost = calculateSessionCost(tokenUsage, selectedModel);
         
         // Get device names
         const micDevice = audioInputDevices.find(d => d.deviceId === selectedMicId)?.label || 'Default Microphone';
@@ -201,6 +201,12 @@ export const useRealtimeChat = () => {
       userStream.current.getAudioTracks().forEach(track => { track.enabled = !isMuted; });
     }
   }, [isMuted]);
+
+  useEffect(() => {
+    if (selectedSpeakerId) {
+      elevenlabsService.current.setOutputDevice(selectedSpeakerId);
+    }
+  }, [selectedSpeakerId]);
 
   const sendClientEvent = (message: any) => {
     if (dataChannel.current && dataChannel.current.readyState === 'open') {
@@ -483,6 +489,10 @@ export const useRealtimeChat = () => {
         
         // Configure and play ElevenLabs TTS
         elevenlabsService.current.setApiKey(settings.elevenlabsApiKey);
+        // Set output device for ElevenLabs audio
+        if (selectedSpeakerId) {
+          elevenlabsService.current.setOutputDevice(selectedSpeakerId);
+        }
         const audio = await elevenlabsService.current.playText(transcript, settings.elevenlabsVoiceId, elevenlabsAudio || undefined, {
           language: settings.language || 'es'
         });
@@ -505,6 +515,10 @@ export const useRealtimeChat = () => {
         console.log('Initializing ElevenLabs streaming TTS...');
         
         elevenlabsService.current.setApiKey(settings.elevenlabsApiKey);
+        // Set output device for ElevenLabs streaming audio
+        if (selectedSpeakerId) {
+          elevenlabsService.current.setOutputDevice(selectedSpeakerId);
+        }
         
         // Close any existing streaming connection
         if (elevenlabsService.current.isStreamingActive()) {
@@ -807,11 +821,32 @@ export const useRealtimeChat = () => {
         setIsConnected(true);
         setSessionStartTime(Date.now());
         const openAISettings = await getOpenAISettings();
+        
+        // Build instructions with language preference
+        const languageNames: Record<string, string> = {
+          'es': 'Spanish',
+          'en': 'English', 
+          'fr': 'French',
+          'de': 'German',
+          'it': 'Italian',
+          'pt': 'Portuguese',
+          'ja': 'Japanese',
+          'ko': 'Korean',
+          'zh': 'Chinese'
+        };
+        const selectedLanguage = openAISettings?.language || 'es';
+        const languageName = languageNames[selectedLanguage] || 'Spanish';
+        const languageInstruction = `You must speak and respond in ${languageName}. Always use ${languageName} for all your responses.`;
+        const baseInstructions = openAISettings?.prompt || '';
+        const fullInstructions = baseInstructions 
+          ? `${languageInstruction}\n\n${baseInstructions}`
+          : languageInstruction;
+        
         sendClientEvent({ 
           type: 'session.update', 
           session: { 
             voice: openAISettings?.voice || 'alloy',
-            instructions: openAISettings?.prompt || undefined,
+            instructions: fullInstructions,
             input_audio_transcription: {
               model: 'gpt-4o-transcribe'
             },

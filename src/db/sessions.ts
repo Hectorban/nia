@@ -32,21 +32,26 @@ export function calculateSessionCost(
     outputAudioTokens: number;
     inputTextTokens: number;
     outputTextTokens: number;
-  }
+  },
+  model: string = 'gpt-realtime'
 ): number {
-  // Pricing per million tokens for gpt-4o-realtime-preview
-  const PRICE_PER_MILLION = {
-    inputAudio: 100,
-    outputAudio: 200,
-    inputText: 2.5,
-    outputText: 10,
+  // Pricing per million tokens for gpt-realtime models
+  const PRICING = {
+    'gpt-realtime': { input: 4, output: 16 },
+    'gpt-realtime-mini': { input: 0.6, output: 2.4 },
+    // Legacy model names (fallback)
+    'gpt-4o-realtime-preview': { input: 4, output: 16 },
+    'gpt-4o-mini-realtime-preview': { input: 0.6, output: 2.4 },
   };
 
+  const prices = PRICING[model as keyof typeof PRICING] || PRICING['gpt-realtime'];
+  
+  const totalInputTokens = tokenUsage.inputAudioTokens + tokenUsage.inputTextTokens;
+  const totalOutputTokens = tokenUsage.outputAudioTokens + tokenUsage.outputTextTokens;
+
   const totalCost = 
-    (tokenUsage.inputAudioTokens / 1_000_000) * PRICE_PER_MILLION.inputAudio +
-    (tokenUsage.outputAudioTokens / 1_000_000) * PRICE_PER_MILLION.outputAudio +
-    (tokenUsage.inputTextTokens / 1_000_000) * PRICE_PER_MILLION.inputText +
-    (tokenUsage.outputTextTokens / 1_000_000) * PRICE_PER_MILLION.outputText;
+    (totalInputTokens / 1_000_000) * prices.input +
+    (totalOutputTokens / 1_000_000) * prices.output;
 
   return Math.round(totalCost * 100) / 100; // Round to 2 decimal places
 }

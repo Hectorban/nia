@@ -1,7 +1,7 @@
 {
   "name": "nia",
   "private": true,
-  "version": "1.3.0",
+  "version": "1.4.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -20,14 +20,15 @@
     "@mendable/firecrawl-js": "^1.29.3",
     "@mui/icons-material": "^7.2.0",
     "@mui/material": "^7.2.0",
-    "@openai/realtime-api-beta": "github:openai/openai-realtime-api-beta",
+    "@openai/agents": "^0.3.3",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-opener": "^2",
     "@tauri-apps/plugin-sql": "^2.3.0",
     "date-fns": "^4.1.0",
     "react": "^18.3.1",
     "react-audio-visualize": "^1.2.0",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",

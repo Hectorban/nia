@@ -35,6 +35,7 @@ export class ElevenLabsService {
   private client: ElevenLabsClient | null = null;
   private apiKey: string | null = null;
   private streamingConnection: ElevenLabsStreamingConnection | null = null;
+  private outputDeviceId: string | null = null;
 
   constructor(apiKey?: string) {
     if (apiKey) {
@@ -45,6 +46,11 @@ export class ElevenLabsService {
   setApiKey(apiKey: string) {
     this.apiKey = apiKey;
     this.client = new ElevenLabsClient({ apiKey });
+  }
+
+  setOutputDevice(deviceId: string) {
+    this.outputDeviceId = deviceId;
+    console.log('ElevenLabs output device set to:', deviceId);
   }
 
   isConfigured(): boolean {
@@ -172,9 +178,27 @@ export class ElevenLabsService {
     
     const audio = audioElement || new Audio();
     audio.src = audioUrl;
-    audio.play().catch(error => {
-      console.error('Failed to play ElevenLabs audio:', error);
-    });
+    
+    // Set output device if configured
+    if (this.outputDeviceId && typeof (audio as any).setSinkId === 'function') {
+      (audio as any).setSinkId(this.outputDeviceId)
+        .then(() => {
+          console.log('ElevenLabs audio output device set successfully');
+          audio.play().catch(error => {
+            console.error('Failed to play ElevenLabs audio:', error);
+          });
+        })
+        .catch((error: Error) => {
+          console.error('Failed to set ElevenLabs audio output device:', error);
+          audio.play().catch(playError => {
+            console.error('Failed to play ElevenLabs audio:', playError);
+          });
+        });
+    } else {
+      audio.play().catch(error => {
+        console.error('Failed to play ElevenLabs audio:', error);
+      });
+    }
 
     // Clean up URL after playing
     audio.addEventListener('ended', () => {
@@ -312,9 +336,25 @@ export class ElevenLabsService {
         chunkAudio.src = audioUrl;
         chunkAudio.volume = connection.audioElement.volume;
         
-        chunkAudio.play().catch(error => {
-          console.error('Failed to play audio chunk:', error);
-        });
+        // Set output device if configured
+        if (this.outputDeviceId && typeof (chunkAudio as any).setSinkId === 'function') {
+          (chunkAudio as any).setSinkId(this.outputDeviceId)
+            .then(() => {
+              chunkAudio.play().catch(error => {
+                console.error('Failed to play audio chunk:', error);
+              });
+            })
+            .catch((error: Error) => {
+              console.error('Failed to set audio chunk output device:', error);
+              chunkAudio.play().catch(playError => {
+                console.error('Failed to play audio chunk:', playError);
+              });
+            });
+        } else {
+          chunkAudio.play().catch(error => {
+            console.error('Failed to play audio chunk:', error);
+          });
+        }
         
         // Clean up URL after playing
         chunkAudio.addEventListener('ended', () => {

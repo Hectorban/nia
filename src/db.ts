@@ -126,12 +126,13 @@ export async function getOpenAISettings(): Promise<OpenAISettings | null> {
       voice: settings.voice || 'alloy',
       prompt: settings.prompt,
       darkMode: settings.darkMode || false,
-      model: settings.model || 'gpt-4o-realtime-preview',
+      model: settings.model || 'gpt-realtime',
       firecrawlApiKey: settings.firecrawlApiKey,
       // Include ElevenLabs settings
       elevenlabsApiKey: settings.elevenlabsApiKey,
       ttsProvider: settings.ttsProvider || 'openai',
-      elevenlabsVoiceId: settings.elevenlabsVoiceId
+      elevenlabsVoiceId: settings.elevenlabsVoiceId,
+      language: settings.language || 'es'
     };
   }
   return null;

@@ -26,7 +26,7 @@ export const Configuration: React.FC = () => {
   const [voice, setVoice] = useState('alloy');
   const [prompt, setPrompt] = useState('');
   const [darkMode, setDarkMode] = useState(false);
-  const [model, setModel] = useState('gpt-4o-realtime-preview');
+  const [model, setModel] = useState('gpt-realtime');
   const [isTestingVoice, setIsTestingVoice] = useState(false);
   const [testError, setTestError] = useState<string | null>(null);
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
@@ -40,7 +40,7 @@ export const Configuration: React.FC = () => {
       setVoice(settings.voice || 'alloy');
       setPrompt(settings.prompt || '');
       setDarkMode(settings.darkMode || false);
-      setModel(settings.model || 'gpt-4o-realtime-preview');
+      setModel(settings.model || 'gpt-realtime');
       // Reset validation status when settings change
       setApiKeyStatus('unchecked');
       setValidationError(null);
@@ -288,22 +288,19 @@ export const Configuration: React.FC = () => {
             label="AI Model"
             onChange={(e) => setModel(e.target.value)}
           >
-            <MenuItem value="gpt-4o-realtime-preview">GPT-4o Realtime (Preview)</MenuItem>
-            <MenuItem value="gpt-4o-mini-realtime-preview">GPT-4o Mini Realtime (Preview)</MenuItem>
+            <MenuItem value="gpt-realtime">GPT Realtime</MenuItem>
+            <MenuItem value="gpt-realtime-mini">GPT Realtime Mini</MenuItem>
           </Select>
         </FormControl>
         <Paper sx={{ p: 2, bgcolor: 'background.default' }}>
           <Typography variant="subtitle2" gutterBottom>
-            Pricing Information (Audio)
+            Pricing Information
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            <strong>GPT-4o Realtime:</strong> $40/M input tokens, $80/M output tokens
+            <strong>GPT Realtime:</strong> $4/M input, $0.50/M cached, $16/M output
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            <strong>GPT-4o Mini Realtime:</strong> $10/M input tokens, $20/M output tokens
-          </Typography>
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-            Text tokens are charged separately at lower rates
+            <strong>GPT Realtime Mini:</strong> $0.60/M input, $0.06/M cached, $2.40/M output
           </Typography>
         </Paper>
         <TextField
