@@ -10,25 +10,35 @@ export interface DeviceSettings {
 }
 
 export interface Settings {
-  apiKey?: string;
-  voice?: string;
-  prompt?: string;
+  // ElevenLabs
+  elevenlabsApiKey?: string;
+  elevenlabsAgentId?: string;
+  elevenlabsVoiceId?: string;
+  // Devices
   selectedMicId?: string | null;
   selectedSpeakerId?: string | null;
+  volume?: number;
+  // App
   darkMode?: boolean;
-  model?: string;
+  // Services
   firecrawlApiKey?: string;
-  // ElevenLabs settings
-  elevenlabsApiKey?: string;
-  ttsProvider?: 'openai' | 'elevenlabs';
-  elevenlabsVoiceId?: string;
+  // Agent overrides
+  prompt?: string;
   language?: string;
-  // VTube Studio settings
+  // VTube Studio
   vtubeStudioAuthAccepted?: boolean;
   vtubeStudioAuthToken?: string;
 }
 
-export type OpenAISettings = Pick<Settings, 'apiKey' | 'voice' | 'prompt' | 'darkMode' | 'model' | 'firecrawlApiKey' | 'elevenlabsApiKey' | 'ttsProvider' | 'elevenlabsVoiceId' | 'language'>;
+export type RealtimeSettings = Pick<Settings,
+  | 'elevenlabsApiKey'
+  | 'elevenlabsAgentId'
+  | 'elevenlabsVoiceId'
+  | 'firecrawlApiKey'
+  | 'prompt'
+  | 'language'
+  | 'darkMode'
+>;
 
 /**
  * Gets the database instance, creating it if it doesn't exist.
@@ -49,25 +59,26 @@ export async function getSettings(): Promise<Settings> {
   const dbInstance = await getDB();
   const result = await dbInstance.select<any[]>('SELECT key, value FROM settings');
   const settings: Settings = {};
-  
+
   for (const row of result) {
     try {
-      if (row.key === 'apiKey') settings.apiKey = row.value;
-      else if (row.key === 'voice') settings.voice = row.value;
-      else if (row.key === 'prompt') settings.prompt = row.value;
+      if (row.key === 'elevenlabsApiKey') settings.elevenlabsApiKey = row.value;
+      else if (row.key === 'elevenlabsAgentId') settings.elevenlabsAgentId = row.value;
+      else if (row.key === 'elevenlabsVoiceId') settings.elevenlabsVoiceId = row.value;
       else if (row.key === 'selectedMicId') settings.selectedMicId = row.value;
       else if (row.key === 'selectedSpeakerId') settings.selectedSpeakerId = row.value;
+      else if (row.key === 'volume') settings.volume = JSON.parse(row.value);
       else if (row.key === 'darkMode') settings.darkMode = JSON.parse(row.value);
-      else if (row.key === 'model') settings.model = row.value;
       else if (row.key === 'firecrawlApiKey') settings.firecrawlApiKey = row.value;
-      else if (row.key === 'elevenlabsApiKey') settings.elevenlabsApiKey = row.value;
-      else if (row.key === 'ttsProvider') settings.ttsProvider = row.value as 'openai' | 'elevenlabs';
-      else if (row.key === 'elevenlabsVoiceId') settings.elevenlabsVoiceId = row.value;
+      else if (row.key === 'prompt') settings.prompt = row.value;
+      else if (row.key === 'language') settings.language = row.value;
+      else if (row.key === 'vtubeStudioAuthAccepted') settings.vtubeStudioAuthAccepted = JSON.parse(row.value);
+      else if (row.key === 'vtubeStudioAuthToken') settings.vtubeStudioAuthToken = row.value;
     } catch (error) {
       console.error(`Failed to parse setting ${row.key}:`, error);
     }
   }
-  
+
   return settings;
 }
 
@@ -116,32 +127,28 @@ export async function saveDeviceSettings(settings: DeviceSettings) {
 }
 
 /**
- * Retrieves the OpenAI settings from the database.
+ * Retrieves the realtime settings (ElevenLabs + services) from the database.
  */
-export async function getOpenAISettings(): Promise<OpenAISettings | null> {
+export async function getRealtimeSettings(): Promise<RealtimeSettings | null> {
   const settings = await getSettings();
-  if (settings.apiKey || settings.voice || settings.prompt || settings.model || settings.elevenlabsApiKey || settings.ttsProvider) {
+  if (settings.elevenlabsApiKey || settings.elevenlabsAgentId) {
     return {
-      apiKey: settings.apiKey || '',
-      voice: settings.voice || 'alloy',
-      prompt: settings.prompt,
-      darkMode: settings.darkMode || false,
-      model: settings.model || 'gpt-realtime',
-      firecrawlApiKey: settings.firecrawlApiKey,
-      // Include ElevenLabs settings
-      elevenlabsApiKey: settings.elevenlabsApiKey,
-      ttsProvider: settings.ttsProvider || 'openai',
+      elevenlabsApiKey: settings.elevenlabsApiKey || '',
+      elevenlabsAgentId: settings.elevenlabsAgentId || '',
       elevenlabsVoiceId: settings.elevenlabsVoiceId,
-      language: settings.language || 'es'
+      firecrawlApiKey: settings.firecrawlApiKey,
+      prompt: settings.prompt,
+      language: settings.language || 'es',
+      darkMode: settings.darkMode || false,
     };
   }
   return null;
 }
 
 /**
- * Saves the OpenAI settings to the database.
+ * Saves the realtime settings to the database.
  */
-export async function saveOpenAISettings(settings: Partial<OpenAISettings>) {
+export async function saveRealtimeSettings(settings: Partial<RealtimeSettings>) {
   await saveSettings(settings);
 }
 

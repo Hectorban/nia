@@ -21,7 +21,6 @@ import {
   Delete as DeleteIcon,
   Visibility as ViewIcon,
   AccessTime as TimeIcon,
-  AttachMoney as MoneyIcon,
   Message as MessageIcon,
 } from '@mui/icons-material';
 import { getAllSessions, deleteSession, getSessionStats, type Session } from '../db/sessions';
@@ -36,7 +35,6 @@ const Sessions = ({ onSelectSession }: SessionsProps) => {
   const [stats, setStats] = useState({
     totalSessions: 0,
     totalDuration: 0,
-    totalCost: 0,
     averageDuration: 0,
     totalMessages: 0,
   });
@@ -123,10 +121,10 @@ const Sessions = ({ onSelectSession }: SessionsProps) => {
         
         <Paper sx={{ p: 2, flex: 1, minWidth: 200 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <MoneyIcon color="primary" />
+            <MessageIcon color="primary" />
             <Box>
-              <Typography variant="h6">${stats.totalCost.toFixed(2)}</Typography>
-              <Typography variant="body2" color="text.secondary">Total Cost</Typography>
+              <Typography variant="h6">{stats.totalMessages}</Typography>
+              <Typography variant="body2" color="text.secondary">Total Messages</Typography>
             </Box>
           </Box>
         </Paper>
@@ -135,8 +133,8 @@ const Sessions = ({ onSelectSession }: SessionsProps) => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <MessageIcon color="primary" />
             <Box>
-              <Typography variant="h6">{stats.totalMessages}</Typography>
-              <Typography variant="body2" color="text.secondary">Total Messages</Typography>
+              <Typography variant="h6">{sessions.length > 0 ? formatDuration(Math.round(stats.averageDuration || 0)) : '0s'}</Typography>
+              <Typography variant="body2" color="text.secondary">Avg Duration</Typography>
             </Box>
           </Box>
         </Paper>
@@ -149,9 +147,8 @@ const Sessions = ({ onSelectSession }: SessionsProps) => {
             <TableRow>
               <TableCell>Date</TableCell>
               <TableCell>Duration</TableCell>
-              <TableCell>Model</TableCell>
-              <TableCell>Tokens Used</TableCell>
-              <TableCell>Cost</TableCell>
+              <TableCell>Agent</TableCell>
+              <TableCell>Conversation ID</TableCell>
               <TableCell>Devices</TableCell>
               <TableCell align="right">Actions</TableCell>
             </TableRow>
@@ -159,7 +156,7 @@ const Sessions = ({ onSelectSession }: SessionsProps) => {
           <TableBody>
             {sessions.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} align="center">
+                <TableCell colSpan={6} align="center">
                   <Typography variant="body2" color="text.secondary" sx={{ py: 3 }}>
                     No sessions yet. Start a chat to see your sessions here.
                   </Typography>
@@ -173,15 +170,13 @@ const Sessions = ({ onSelectSession }: SessionsProps) => {
                   </TableCell>
                   <TableCell>{formatDuration(session.duration_seconds)}</TableCell>
                   <TableCell>
-                    <Chip label={session.model} size="small" color="primary" variant="outlined" />
+                    <Chip label={session.agent_id} size="small" color="primary" variant="outlined" />
                   </TableCell>
                   <TableCell>
-                    <Box sx={{ fontSize: '0.875rem' }}>
-                      <div>Audio: {(session.input_audio_tokens + session.output_audio_tokens).toLocaleString()}</div>
-                      <div>Text: {(session.input_text_tokens + session.output_text_tokens).toLocaleString()}</div>
-                    </Box>
+                    <Typography variant="body2" sx={{ fontSize: '0.75rem', fontFamily: 'monospace' }}>
+                      {session.conversation_id.substring(0, 12)}...
+                    </Typography>
                   </TableCell>
-                  <TableCell>${session.total_cost.toFixed(2)}</TableCell>
                   <TableCell>
                     <Box sx={{ fontSize: '0.75rem' }}>
                       <div>{session.mic_device}</div>

@@ -12,6 +12,7 @@
   "dependencies": {
     "@chatscope/chat-ui-kit-react": "^2.1.1",
     "@chatscope/chat-ui-kit-styles": "^1.4.0",
+    "@elevenlabs/client": "^1.8.1",
     "@elevenlabs/elevenlabs-js": "^2.7.0",
     "@elevenlabs/react": "^0.4.5",
     "@emotion/react": "^11.14.0",
@@ -20,7 +21,6 @@
     "@mendable/firecrawl-js": "^1.29.3",
     "@mui/icons-material": "^7.2.0",
     "@mui/material": "^7.2.0",
-    "@openai/agents": "^0.3.3",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-opener": "^2",
     "@tauri-apps/plugin-sql": "^2.3.0",

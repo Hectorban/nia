@@ -5,12 +5,8 @@ export interface Session {
   start_time: number;
   end_time: number;
   duration_seconds: number;
-  model: string;
-  input_audio_tokens: number;
-  output_audio_tokens: number;
-  input_text_tokens: number;
-  output_text_tokens: number;
-  total_cost: number;
+  agent_id: string;
+  conversation_id: string;
   mic_device?: string;
   speaker_device?: string;
   created_at?: number;
@@ -25,76 +21,40 @@ export interface Message {
   created_at?: number;
 }
 
-// Calculate session cost based on token usage
-export function calculateSessionCost(
-  tokenUsage: {
-    inputAudioTokens: number;
-    outputAudioTokens: number;
-    inputTextTokens: number;
-    outputTextTokens: number;
-  },
-  model: string = 'gpt-realtime'
-): number {
-  // Pricing per million tokens for gpt-realtime models
-  const PRICING = {
-    'gpt-realtime': { input: 4, output: 16 },
-    'gpt-realtime-mini': { input: 0.6, output: 2.4 },
-    // Legacy model names (fallback)
-    'gpt-4o-realtime-preview': { input: 4, output: 16 },
-    'gpt-4o-mini-realtime-preview': { input: 0.6, output: 2.4 },
-  };
-
-  const prices = PRICING[model as keyof typeof PRICING] || PRICING['gpt-realtime'];
-  
-  const totalInputTokens = tokenUsage.inputAudioTokens + tokenUsage.inputTextTokens;
-  const totalOutputTokens = tokenUsage.outputAudioTokens + tokenUsage.outputTextTokens;
-
-  const totalCost = 
-    (totalInputTokens / 1_000_000) * prices.input +
-    (totalOutputTokens / 1_000_000) * prices.output;
-
-  return Math.round(totalCost * 100) / 100; // Round to 2 decimal places
-}
-
 // Save a session with its messages
 export async function saveSession(
   sessionData: Omit<Session, 'id' | 'created_at'>,
   messages: Omit<Message, 'id' | 'session_id' | 'created_at'>[]
 ): Promise<number> {
   const db = await Database.load('sqlite:nia.db');
-  
+
   try {
     // Start transaction
     await db.execute('BEGIN TRANSACTION');
-    
+
     // Insert session
     const sessionResult = await db.execute(
       `INSERT INTO sessions (
-        start_time, end_time, duration_seconds, model,
-        input_audio_tokens, output_audio_tokens, input_text_tokens, output_text_tokens,
-        total_cost, mic_device, speaker_device
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        start_time, end_time, duration_seconds, agent_id, conversation_id,
+        mic_device, speaker_device
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         sessionData.start_time,
         sessionData.end_time,
         sessionData.duration_seconds,
-        sessionData.model,
-        sessionData.input_audio_tokens,
-        sessionData.output_audio_tokens,
-        sessionData.input_text_tokens,
-        sessionData.output_text_tokens,
-        sessionData.total_cost,
+        sessionData.agent_id,
+        sessionData.conversation_id,
         sessionData.mic_device || null,
         sessionData.speaker_device || null,
       ]
     );
-    
+
     const sessionId = sessionResult.lastInsertId;
-    
+
     if (!sessionId) {
       throw new Error('Failed to get session ID');
     }
-    
+
     // Insert messages
     for (const message of messages) {
       await db.execute(
@@ -102,10 +62,10 @@ export async function saveSession(
         [sessionId, message.speaker, message.text, message.timestamp]
       );
     }
-    
+
     // Commit transaction
     await db.execute('COMMIT');
-    
+
     return sessionId;
   } catch (error) {
     // Rollback on error
@@ -129,21 +89,21 @@ export async function getSessionWithMessages(sessionId: number): Promise<{
   messages: Message[];
 } | null> {
   const db = await Database.load('sqlite:nia.db');
-  
+
   const sessionResult = await db.select<Session[]>(
     'SELECT * FROM sessions WHERE id = ?',
     [sessionId]
   );
-  
+
   if (sessionResult.length === 0) {
     return null;
   }
-  
+
   const messages = await db.select<Message[]>(
     'SELECT * FROM messages WHERE session_id = ? ORDER BY timestamp',
     [sessionId]
   );
-  
+
   return {
     session: sessionResult[0],
     messages,
@@ -160,26 +120,23 @@ export async function deleteSession(sessionId: number): Promise<void> {
 export async function getSessionStats(): Promise<{
   totalSessions: number;
   totalDuration: number;
-  totalCost: number;
   averageDuration: number;
   totalMessages: number;
 }> {
   const db = await Database.load('sqlite:nia.db');
-  
+
   const stats = await db.select<any[]>(`
     SELECT 
       COUNT(*) as totalSessions,
       SUM(duration_seconds) as totalDuration,
-      SUM(total_cost) as totalCost,
       AVG(duration_seconds) as averageDuration,
       (SELECT COUNT(*) FROM messages) as totalMessages
     FROM sessions
   `);
-  
+
   return stats[0] || {
     totalSessions: 0,
     totalDuration: 0,
-    totalCost: 0,
     averageDuration: 0,
     totalMessages: 0,
   };

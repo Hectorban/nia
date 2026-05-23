@@ -15,7 +15,6 @@ import {
   Person as PersonIcon,
   SmartToy as BotIcon,
   AccessTime as TimeIcon,
-  AttachMoney as MoneyIcon,
   Mic as MicIcon,
   Speaker as SpeakerIcon,
 } from '@mui/icons-material';
@@ -105,41 +104,15 @@ const SessionDetail = ({ sessionId, onBack }: SessionDetailProps) => {
           </Box>
           
           <Box>
-            <Typography variant="body2" color="text.secondary">Total Cost</Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <MoneyIcon fontSize="small" />
-              <Typography>${session.total_cost.toFixed(2)}</Typography>
-            </Box>
+            <Typography variant="body2" color="text.secondary">Agent</Typography>
+            <Chip label={session.agent_id} size="small" color="primary" />
           </Box>
           
           <Box>
-            <Typography variant="body2" color="text.secondary">Model</Typography>
-            <Chip label={session.model} size="small" color="primary" />
-          </Box>
-        </Box>
-
-        <Divider sx={{ my: 2 }} />
-
-        <Typography variant="h6" gutterBottom>
-          Token Usage
-        </Typography>
-        
-        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2, mt: 2 }}>
-          <Box>
-            <Typography variant="body2" color="text.secondary">Input Audio</Typography>
-            <Typography>{session.input_audio_tokens.toLocaleString()} tokens</Typography>
-          </Box>
-          <Box>
-            <Typography variant="body2" color="text.secondary">Output Audio</Typography>
-            <Typography>{session.output_audio_tokens.toLocaleString()} tokens</Typography>
-          </Box>
-          <Box>
-            <Typography variant="body2" color="text.secondary">Input Text</Typography>
-            <Typography>{session.input_text_tokens.toLocaleString()} tokens</Typography>
-          </Box>
-          <Box>
-            <Typography variant="body2" color="text.secondary">Output Text</Typography>
-            <Typography>{session.output_text_tokens.toLocaleString()} tokens</Typography>
+            <Typography variant="body2" color="text.secondary">Conversation ID</Typography>
+            <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>
+              {session.conversation_id}
+            </Typography>
           </Box>
         </Box>
 

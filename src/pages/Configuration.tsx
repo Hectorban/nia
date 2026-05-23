@@ -11,115 +11,85 @@ import {
   FormControlLabel,
   Switch,
   Paper,
-  IconButton,
   CircularProgress,
-  Alert,
   Box,
-  Chip
 } from '@mui/material';
-import { PlayArrow, Stop, CheckCircle, Error as ErrorIcon } from '@mui/icons-material';
+import { PlayArrow, Stop } from '@mui/icons-material';
 import { useSettings } from '../hooks/useSettings';
 import { ElevenLabsService, ElevenLabsVoice } from '../services/elevenlabs';
 
 export const Configuration: React.FC = () => {
   const { settings, updateSettings } = useSettings();
-  const [apiKey, setApiKey] = useState('');
-  const [voice, setVoice] = useState('alloy');
-  const [prompt, setPrompt] = useState('');
-  const [darkMode, setDarkMode] = useState(false);
-  const [model, setModel] = useState('gpt-realtime');
-  const [firecrawlApiKey, setFirecrawlApiKey] = useState('');
-  const [isTestingVoice, setIsTestingVoice] = useState(false);
-  const [testError, setTestError] = useState<string | null>(null);
-  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
-  const [isValidatingKey, setIsValidatingKey] = useState(false);
-  const [apiKeyStatus, setApiKeyStatus] = useState<'valid' | 'invalid' | 'unchecked'>('unchecked');
-  const [validationError, setValidationError] = useState<string | null>(null);
   const [elevenlabsApiKey, setElevenlabsApiKey] = useState('');
-  const [ttsProvider, setTtsProvider] = useState<'openai' | 'elevenlabs'>('openai');
+  const [elevenlabsAgentId, setElevenlabsAgentId] = useState('');
+  const [darkMode, setDarkMode] = useState(false);
+  const [firecrawlApiKey, setFirecrawlApiKey] = useState('');
   const [elevenlabsVoiceId, setElevenlabsVoiceId] = useState('');
   const [elevenlabsVoices, setElevenlabsVoices] = useState<ElevenLabsVoice[]>([]);
   const [isLoadingVoices, setIsLoadingVoices] = useState(false);
   const [elevenlabsService] = useState(new ElevenLabsService());
   const [language, setLanguage] = useState('es');
+  const [prompt, setPrompt] = useState('');
+  const [isTestingVoice, setIsTestingVoice] = useState(false);
+  const [testError, setTestError] = useState<string | null>(null);
+  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     if (settings) {
-      setApiKey(settings.apiKey || '');
-      setVoice(settings.voice || 'alloy');
-      setPrompt(settings.prompt || '');
-      setDarkMode(settings.darkMode || false);
-      setModel(settings.model || 'gpt-realtime');
-      setFirecrawlApiKey(settings.firecrawlApiKey || '');
       setElevenlabsApiKey(settings.elevenlabsApiKey || '');
-      setTtsProvider(settings.ttsProvider || 'openai');
+      setElevenlabsAgentId(settings.elevenlabsAgentId || '');
+      setDarkMode(settings.darkMode || false);
+      setFirecrawlApiKey(settings.firecrawlApiKey || '');
       setElevenlabsVoiceId(settings.elevenlabsVoiceId || '');
       setLanguage(settings.language || 'es');
-      // Reset validation status when settings change
-      setApiKeyStatus('unchecked');
-      setValidationError(null);
+      setPrompt(settings.prompt || '');
     }
   }, [settings]);
 
   const handleSave = async () => {
     await updateSettings({ 
-      apiKey, 
-      voice, 
-      prompt, 
-      darkMode, 
-      model, 
-      firecrawlApiKey,
       elevenlabsApiKey,
-      ttsProvider,
+      elevenlabsAgentId,
+      darkMode,
+      firecrawlApiKey,
       elevenlabsVoiceId,
-      language
+      language,
+      prompt,
     });
   };
 
-  const validateApiKey = async () => {
-    if (!apiKey) return;
+  const loadElevenlabsVoices = async () => {
+    console.log('Loading ElevenLabs voices, API key present:', !!elevenlabsApiKey);
 
-    setIsValidatingKey(true);
-    setValidationError(null);
-    
+    if (!elevenlabsApiKey) {
+      console.log('No API key, clearing voices');
+      setElevenlabsVoices([]);
+      return;
+    }
+
+    setIsLoadingVoices(true);
     try {
-      const response = await fetch('https://api.openai.com/v1/models', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-        },
-      });
-
-      if (response.ok) {
-        setApiKeyStatus('valid');
-        // Save the key immediately if it's valid
-        updateSettings({ apiKey });
-      } else {
-        setApiKeyStatus('invalid');
-        if (response.status === 401) {
-          setValidationError('Invalid API key');
-        } else {
-          setValidationError(`API error: ${response.status}`);
-        }
-      }
+      elevenlabsService.setApiKey(elevenlabsApiKey);
+      const voices = await elevenlabsService.getVoices();
+      console.log('Loaded voices:', voices.length, voices.map(v => ({ id: v.voice_id, name: v.name })));
+      setElevenlabsVoices(voices);
     } catch (error) {
-      setApiKeyStatus('invalid');
-      setValidationError('Failed to validate API key');
+      console.error('Failed to load ElevenLabs voices:', error);
+      setElevenlabsVoices([]);
     } finally {
-      setIsValidatingKey(false);
+      setIsLoadingVoices(false);
     }
   };
 
   const testVoice = async () => {
-    if (!apiKey) {
-      setTestError('Please enter an API key first');
+    if (!elevenlabsApiKey || !elevenlabsVoiceId) {
+      setTestError('Please enter ElevenLabs API key and select a voice first');
       return;
     }
 
     setIsTestingVoice(true);
     setTestError(null);
 
-    // Stop any currently playing audio
     if (currentAudio) {
       currentAudio.pause();
       currentAudio.src = '';
@@ -127,38 +97,19 @@ export const Configuration: React.FC = () => {
     }
 
     try {
-      const response = await fetch('https://api.openai.com/v1/audio/speech', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'tts-1',
-          input: `Hello! This is a test of the ${voice} voice. I'm your AI assistant and I'm excited to chat with you.`,
-          voice: voice,
-        }),
+      elevenlabsService.setApiKey(elevenlabsApiKey);
+      const selectedVoice = elevenlabsVoices.find(v => v.voice_id === elevenlabsVoiceId);
+      const testText = language === 'es'
+        ? `¡Hola! Esta es una prueba de la voz ${selectedVoice?.name || 'seleccionada'}.`
+        : `Hello! This is a test of the ${selectedVoice?.name || 'selected'} voice.`;
+
+      const audio = await elevenlabsService.playText(testText, elevenlabsVoiceId, undefined, {
+        language: language,
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || 'Failed to generate speech');
-      }
-
-      const audioBlob = await response.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
-      
-      audio.onended = () => {
-        URL.revokeObjectURL(audioUrl);
-        setCurrentAudio(null);
-      };
-
       setCurrentAudio(audio);
-      await audio.play();
     } catch (error) {
-      console.error('Voice test error:', error);
-      setTestError(error instanceof Error ? error.message : 'Failed to test voice');
+      console.error('Failed to test voice:', error);
+      setTestError(`Failed to test voice: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsTestingVoice(false);
     }
@@ -172,73 +123,6 @@ export const Configuration: React.FC = () => {
     }
   };
 
-  const loadElevenlabsVoices = async () => {
-    console.log('Loading ElevenLabs voices, API key present:', !!elevenlabsApiKey);
-    
-    if (!elevenlabsApiKey) {
-      console.log('No API key, clearing voices');
-      setElevenlabsVoices([]);
-      return;
-    }
-
-    setIsLoadingVoices(true);
-    try {
-      elevenlabsService.setApiKey(elevenlabsApiKey);
-      console.log('ElevenLabs service API key set, fetching voices...');
-      const voices = await elevenlabsService.getVoices();
-      console.log('Loaded voices:', voices.length, voices.map(v => ({ id: v.voice_id, name: v.name })));
-      setElevenlabsVoices(voices);
-    } catch (error) {
-      console.error('Failed to load ElevenLabs voices:', error);
-      setElevenlabsVoices([]);
-    } finally {
-      setIsLoadingVoices(false);
-    }
-  };
-
-  const testElevenlabsVoice = async () => {
-    console.log('Testing ElevenLabs voice:', {
-      apiKey: elevenlabsApiKey ? 'Set' : 'Not set',
-      voiceId: elevenlabsVoiceId,
-      voicesAvailable: elevenlabsVoices.length
-    });
-    
-    if (!elevenlabsApiKey || !elevenlabsVoiceId) {
-      const errorMsg = 'Please enter ElevenLabs API key and select a voice first';
-      console.log('Test failed:', errorMsg);
-      setTestError(errorMsg);
-      return;
-    }
-
-    setIsTestingVoice(true);
-    setTestError(null);
-
-    // Stop any currently playing audio
-    if (currentAudio) {
-      currentAudio.pause();
-      currentAudio.src = '';
-      setCurrentAudio(null);
-    }
-
-    try {
-      elevenlabsService.setApiKey(elevenlabsApiKey);
-      const selectedVoice = elevenlabsVoices.find(v => v.voice_id === elevenlabsVoiceId);
-      const testText = language === 'es' 
-        ? `¡Hola! Esta es una prueba de la voz ${selectedVoice?.name || 'seleccionada'}. Soy tu asistente de IA y estoy emocionado de chatear contigo.`
-        : `Hello! This is a test of the ${selectedVoice?.name || 'selected'} voice. I'm your AI assistant and I'm excited to chat with you.`;
-      
-      const audio = await elevenlabsService.playText(testText, elevenlabsVoiceId, undefined, {
-        language: language
-      });
-      setCurrentAudio(audio);
-    } catch (error) {
-      console.error('Failed to test ElevenLabs voice:', error);
-      setTestError(`Failed to test voice: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setIsTestingVoice(false);
-    }
-  };
-
   // Load ElevenLabs voices when API key changes
   useEffect(() => {
     if (elevenlabsApiKey) {
@@ -246,6 +130,7 @@ export const Configuration: React.FC = () => {
     } else {
       setElevenlabsVoices([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [elevenlabsApiKey]);
 
   return (
@@ -268,123 +153,21 @@ export const Configuration: React.FC = () => {
           Configuration
         </Typography>
         <Stack spacing={3}>
-        <FormControlLabel
-          control={
-            <Switch
-              checked={darkMode}
-              onChange={(e) => {
-                const newDarkMode = e.target.checked;
-                setDarkMode(newDarkMode);
-                // Immediately update dark mode without waiting for save button
-                updateSettings({ darkMode: newDarkMode });
-              }}
-            />
-          }
-          label="Dark Mode"
-        />
-        <Box>
-          <Stack direction="row" spacing={2} alignItems="center">
-            <TextField
-              id="apiKey"
-              label="OpenAI API Key"
-              type="password"
-              value={apiKey}
-              onChange={(e) => {
-                setApiKey(e.target.value);
-                // Reset validation status when key changes
-                setApiKeyStatus('unchecked');
-                setValidationError(null);
-              }}
-              fullWidth
-              variant="outlined"
-              size="small"
-              error={apiKeyStatus === 'invalid'}
-              helperText={validationError}
-            />
-            <Button
-              variant="outlined"
-              onClick={validateApiKey}
-              disabled={!apiKey || isValidatingKey}
-              size="small"
-              sx={{ minWidth: '100px' }}
-            >
-              {isValidatingKey ? (
-                <CircularProgress size={20} />
-              ) : (
-                'Validate'
-              )}
-            </Button>
-          </Stack>
-          {apiKeyStatus === 'valid' && (
-            <Chip
-              icon={<CheckCircle />}
-              label="Valid API Key"
-              color="success"
-              size="small"
-              sx={{ mt: 1 }}
-            />
-          )}
-          {apiKeyStatus === 'invalid' && !validationError && (
-            <Chip
-              icon={<ErrorIcon />}
-              label="Invalid API Key"
-              color="error"
-              size="small"
-              sx={{ mt: 1 }}
-            />
-          )}
-        </Box>
-        <TextField
-          id="firecrawlApiKey"
-          label="Firecrawl API Key (Optional)"
-          type="password"
-          value={firecrawlApiKey}
-          onChange={(e) => setFirecrawlApiKey(e.target.value)}
-          fullWidth
-          variant="outlined"
-          size="small"
-          helperText="Required for AI to read web links. Get your API key from firecrawl.dev"
-        />
-        
-        {/* TTS Provider Selection */}
-        <FormControl fullWidth size="small">
-          <InputLabel id="tts-provider-label">Text-to-Speech Provider</InputLabel>
-          <Select
-            labelId="tts-provider-label"
-            id="tts-provider"
-            value={ttsProvider}
-            label="Text-to-Speech Provider"
-            onChange={(e) => setTtsProvider(e.target.value as 'openai' | 'elevenlabs')}
-          >
-            <MenuItem value="openai">OpenAI TTS</MenuItem>
-            <MenuItem value="elevenlabs">ElevenLabs TTS</MenuItem>
-          </Select>
-        </FormControl>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={darkMode}
+                onChange={(e) => {
+                  const newDarkMode = e.target.checked;
+                  setDarkMode(newDarkMode);
+                  updateSettings({ darkMode: newDarkMode });
+                }}
+              />
+            }
+            label="Dark Mode"
+          />
 
-        {/* Language Selection - applies to both OpenAI Realtime and ElevenLabs */}
-        <FormControl fullWidth size="small">
-          <InputLabel id="language-label">Conversation Language</InputLabel>
-          <Select
-            labelId="language-label"
-            id="language"
-            value={language}
-            label="Conversation Language"
-            onChange={(e) => setLanguage(e.target.value)}
-          >
-            <MenuItem value="es">Spanish (Español)</MenuItem>
-            <MenuItem value="en">English</MenuItem>
-            <MenuItem value="fr">French (Français)</MenuItem>
-            <MenuItem value="de">German (Deutsch)</MenuItem>
-            <MenuItem value="it">Italian (Italiano)</MenuItem>
-            <MenuItem value="pt">Portuguese (Português)</MenuItem>
-            <MenuItem value="ja">Japanese (日本語)</MenuItem>
-            <MenuItem value="ko">Korean (한국어)</MenuItem>
-            <MenuItem value="zh">Chinese (中文)</MenuItem>
-          </Select>
-        </FormControl>
-
-        {/* ElevenLabs API Key */}
-        {ttsProvider === 'elevenlabs' && (
+          {/* ElevenLabs API Key */}
           <TextField
             id="elevenlabsApiKey"
             label="ElevenLabs API Key"
@@ -394,39 +177,62 @@ export const Configuration: React.FC = () => {
             fullWidth
             variant="outlined"
             size="small"
-            helperText="Required for ElevenLabs TTS. Get your API key from elevenlabs.io"
+            helperText="Required for voice conversations. Get your key from elevenlabs.io"
           />
-        )}
 
-        <Box>
+          {/* Agent ID */}
+          <TextField
+            id="elevenlabsAgentId"
+            label="ElevenLabs Agent ID"
+            value={elevenlabsAgentId}
+            onChange={(e) => setElevenlabsAgentId(e.target.value)}
+            fullWidth
+            variant="outlined"
+            size="small"
+            helperText="Find this in your agent dashboard on elevenlabs.io"
+          />
+
+          {/* Language Selection */}
           <FormControl fullWidth size="small">
-            <InputLabel id="voice-label">
-              {ttsProvider === 'elevenlabs' ? 'ElevenLabs Voice' : 'OpenAI Voice'}
-            </InputLabel>
+            <InputLabel id="language-label">Conversation Language</InputLabel>
             <Select
-              labelId="voice-label"
-              id="voice"
-              value={ttsProvider === 'elevenlabs' ? (elevenlabsVoiceId || '') : (voice || '')}
-              label={ttsProvider === 'elevenlabs' ? 'ElevenLabs Voice' : 'OpenAI Voice'}
-              onChange={(e) => {
-                console.log('Voice selection changed:', {
-                  provider: ttsProvider,
-                  newValue: e.target.value,
-                  currentElevenlabsVoiceId: elevenlabsVoiceId,
-                  currentVoice: voice
-                });
-                if (ttsProvider === 'elevenlabs') {
-                  setElevenlabsVoiceId(e.target.value);
-                  console.log('Set ElevenLabs voice ID to:', e.target.value);
-                } else {
-                  setVoice(e.target.value);
-                  console.log('Set OpenAI voice to:', e.target.value);
-                }
-              }}
-              disabled={ttsProvider === 'elevenlabs' && isLoadingVoices}
+              labelId="language-label"
+              id="language"
+              value={language}
+              label="Conversation Language"
+              onChange={(e) => setLanguage(e.target.value)}
             >
-              {ttsProvider === 'elevenlabs' ? (
-                isLoadingVoices ? (
+              <MenuItem value="es">Spanish (Español)</MenuItem>
+              <MenuItem value="en">English</MenuItem>
+              <MenuItem value="fr">French (Français)</MenuItem>
+              <MenuItem value="de">German (Deutsch)</MenuItem>
+              <MenuItem value="it">Italian (Italiano)</MenuItem>
+              <MenuItem value="pt">Portuguese (Português)</MenuItem>
+              <MenuItem value="ja">Japanese (日本語)</MenuItem>
+              <MenuItem value="ko">Korean (한국어)</MenuItem>
+              <MenuItem value="zh">Chinese (中文)</MenuItem>
+            </Select>
+          </FormControl>
+
+          {/* Voice Selection (optional override) */}
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+              Voice Override (optional — leave empty to use the agent's default)
+            </Typography>
+            <FormControl fullWidth size="small">
+              <InputLabel id="voice-label">ElevenLabs Voice</InputLabel>
+              <Select
+                labelId="voice-label"
+                id="voice"
+                value={elevenlabsVoiceId || ''}
+                label="ElevenLabs Voice"
+                onChange={(e) => setElevenlabsVoiceId(e.target.value)}
+                disabled={isLoadingVoices}
+              >
+                <MenuItem value="">
+                  <em>Use agent default</em>
+                </MenuItem>
+                {isLoadingVoices ? (
                   <MenuItem key="loading" disabled>
                     <CircularProgress size={20} sx={{ mr: 1 }} />
                     Loading voices...
@@ -441,94 +247,74 @@ export const Configuration: React.FC = () => {
                   <MenuItem key="no-voices" disabled>
                     {elevenlabsApiKey ? 'No voices available' : 'Enter API key to load voices'}
                   </MenuItem>
-                )
-              ) : (
-                <>
-                  <MenuItem key="alloy" value="alloy">Alloy</MenuItem>
-                  <MenuItem key="echo" value="echo">Echo</MenuItem>
-                  <MenuItem key="fable" value="fable">Fable</MenuItem>
-                  <MenuItem key="onyx" value="onyx">Onyx</MenuItem>
-                  <MenuItem key="nova" value="nova">Nova</MenuItem>
-                  <MenuItem key="shimmer" value="shimmer">Shimmer</MenuItem>
-                </>
-              )}
-            </Select>
-          </FormControl>
-          <Box sx={{ display: 'flex', alignItems: 'center', mt: 1, gap: 1 }}>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={ttsProvider === 'elevenlabs' ? testElevenlabsVoice : testVoice}
-              disabled={
-                isTestingVoice || 
-                (ttsProvider === 'openai' && !apiKey) || 
-                (ttsProvider === 'elevenlabs' && (!elevenlabsApiKey || !elevenlabsVoiceId))
-              }
-              startIcon={isTestingVoice ? <CircularProgress size={16} /> : <PlayArrow />}
-            >
-              {isTestingVoice ? 'Testing...' : `Test ${ttsProvider === 'elevenlabs' ? 'ElevenLabs' : 'OpenAI'} Voice`}
-            </Button>
-            {currentAudio && (
-              <IconButton
+                )}
+              </Select>
+            </FormControl>
+            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1, gap: 1 }}>
+              <Button
+                variant="outlined"
                 size="small"
-                onClick={stopAudio}
-                color="error"
+                onClick={testVoice}
+                disabled={isTestingVoice || !elevenlabsApiKey || !elevenlabsVoiceId}
+                startIcon={isTestingVoice ? <CircularProgress size={16} /> : <PlayArrow />}
               >
-                <Stop />
-              </IconButton>
+                {isTestingVoice ? 'Testing...' : 'Test Voice'}
+              </Button>
+              {currentAudio && (
+                <Button
+                  size="small"
+                  onClick={stopAudio}
+                  color="error"
+                  startIcon={<Stop />}
+                >
+                  Stop
+                </Button>
+              )}
+            </Box>
+            {testError && (
+              <Typography variant="caption" color="error" sx={{ mt: 1, display: 'block' }}>
+                {testError}
+              </Typography>
             )}
           </Box>
-          {testError && (
-            <Alert severity="error" sx={{ mt: 1 }} onClose={() => setTestError(null)}>
-              {testError}
-            </Alert>
-          )}
-        </Box>
-        <FormControl fullWidth size="small">
-          <InputLabel id="model-label">AI Model</InputLabel>
-          <Select
-            labelId="model-label"
-            id="model"
-            value={model}
-            label="AI Model"
-            onChange={(e) => setModel(e.target.value)}
+
+          {/* Firecrawl API Key */}
+          <TextField
+            id="firecrawlApiKey"
+            label="Firecrawl API Key (Optional)"
+            type="password"
+            value={firecrawlApiKey}
+            onChange={(e) => setFirecrawlApiKey(e.target.value)}
+            fullWidth
+            variant="outlined"
+            size="small"
+            helperText="Required for AI to read web links. Get your key from firecrawl.dev"
+          />
+
+          {/* System Prompt */}
+          <TextField
+            id="prompt"
+            label="System Prompt Override (Optional)"
+            placeholder="Leave empty to use the agent's configured prompt"
+            multiline
+            rows={4}
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            fullWidth
+            variant="outlined"
+            size="small"
+            helperText="Overrides the agent's default system prompt when set"
+          />
+
+          <Button 
+            variant="contained" 
+            onClick={handleSave}
+            sx={{ alignSelf: 'flex-start' }}
           >
-            <MenuItem value="gpt-realtime">GPT Realtime</MenuItem>
-            <MenuItem value="gpt-realtime-mini">GPT Realtime Mini</MenuItem>
-          </Select>
-        </FormControl>
-        <Paper sx={{ p: 2, bgcolor: 'background.default' }}>
-          <Typography variant="subtitle2" gutterBottom>
-            Pricing Information
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            <strong>GPT Realtime:</strong> $4/M input, $0.50/M cached, $16/M output
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            <strong>GPT Realtime Mini:</strong> $0.60/M input, $0.06/M cached, $2.40/M output
-          </Typography>
-        </Paper>
-        <TextField
-          id="prompt"
-          label="System Prompt"
-          placeholder="Enter a custom system prompt for the AI assistant"
-          multiline
-          rows={4}
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          fullWidth
-          variant="outlined"
-          size="small"
-        />
-        <Button 
-          variant="contained" 
-          onClick={handleSave}
-          sx={{ alignSelf: 'flex-start' }}
-        >
-          Save Settings
-        </Button>
-      </Stack>
-    </Paper>
+            Save Settings
+          </Button>
+        </Stack>
+      </Paper>
     </Box>
   );
 };

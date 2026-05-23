@@ -49,12 +49,26 @@ pub fn run() {
                     FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
                 );
 
-                CREATE INDEX idx_sessions_created_at ON sessions(created_at DESC);
-                CREATE INDEX idx_messages_session_id ON messages(session_id);
-                CREATE INDEX idx_messages_timestamp ON messages(session_id, timestamp);
+                CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON sessions(created_at DESC);
+                CREATE INDEX IF NOT EXISTS idx_messages_session_id ON messages(session_id);
+                CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(session_id, timestamp);
             "#,
             kind: MigrationKind::Up,
-        }
+        },
+        Migration {
+            version: 3,
+            description: "add_elevenlabs_session_fields",
+            sql: r#"
+                -- Add columns for ElevenLabs Agents session tracking
+                ALTER TABLE sessions ADD COLUMN agent_id TEXT;
+                ALTER TABLE sessions ADD COLUMN conversation_id TEXT;
+
+                -- Backfill agent_id from old model field for existing sessions
+                UPDATE sessions SET agent_id = model WHERE agent_id IS NULL AND model IS NOT NULL;
+                UPDATE sessions SET agent_id = 'legacy' WHERE agent_id IS NULL;
+            "#,
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
