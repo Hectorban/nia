@@ -309,9 +309,8 @@ export const useRealtimeChat = () => {
       const options: PartialOptions = {
         agentId,
         authorization: apiKey,
+        connectionType: 'webrtc',
         clientTools,
-        inputDeviceId: selectedMicId,
-        outputDeviceId: selectedSpeakerId || undefined,
         overrides: {
           agent: {
             prompt: promptOverride,
@@ -332,7 +331,7 @@ export const useRealtimeChat = () => {
           console.error('ElevenLabs conversation error:', message, context);
         },
         onMessage: (props) => {
-          const { message, role } = props;
+          const { message, source: role } = props;
           const speaker = role === 'user' ? 'You' : 'Agent';
           setConversationLog(prev => [...prev, { speaker, text: message }]);
           if (role === 'user') {
@@ -349,14 +348,6 @@ export const useRealtimeChat = () => {
           } else {
             setLiveUserTranscript('');
           }
-        },
-        onAgentChatResponsePart: (props) => {
-          if (props?.text) {
-            setLiveAgentTranscript(prev => prev + props.text);
-          }
-        },
-        onInterruption: () => {
-          setLiveAgentTranscript('');
         },
         onStatusChange: ({ status }) => {
           console.log('ElevenLabs status:', status);
