@@ -37,7 +37,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nia-windows-msi
-          path: ${{ steps.build.outputs.artifactPaths }}
+          path: src-tauri/target/release/bundle/msi/*.msi
           if-no-files-found: error
 
   build-linux:
@@ -88,7 +88,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nia-linux
-          path: ${{ steps.build.outputs.artifactPaths }}
+          path: |
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/appimage/*.AppImage
           if-no-files-found: error
 
   create-release:
