@@ -35,13 +35,14 @@ export async function saveSession(
     // Insert session
     const sessionResult = await db.execute(
       `INSERT INTO sessions (
-        start_time, end_time, duration_seconds, agent_id, conversation_id,
+        start_time, end_time, duration_seconds, model, agent_id, conversation_id,
         mic_device, speaker_device
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         sessionData.start_time,
         sessionData.end_time,
         sessionData.duration_seconds,
+        sessionData.agent_id,
         sessionData.agent_id,
         sessionData.conversation_id,
         sessionData.mic_device || null,

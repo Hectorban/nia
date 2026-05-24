@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Conversation, type PartialOptions, type VoiceConversation } from '@elevenlabs/client';
+import { Conversation, VoiceConversation, type PartialOptions } from '@elevenlabs/client';
 import { getDeviceSettings, saveDeviceSettings, getRealtimeSettings } from '../db';
 import { saveSession } from '../db/sessions';
 import { VTubeStudioService, findBestExpressionMatch } from '../services/vtubeStudio';
@@ -117,8 +117,9 @@ export const useRealtimeChat = () => {
   }, [sessionStartTime, conversationLog, audioInputDevices, audioOutputDevices, selectedMicId, selectedSpeakerId, stopVolumePolling]);
 
   const getAudioDevices = useCallback(async () => {
+    let stream: MediaStream | null = null;
     try {
-      await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const devices = await navigator.mediaDevices.enumerateDevices();
       const audioInputs = devices.filter(device => device.kind === 'audioinput');
       const audioOutputs = devices.filter(device => device.kind === 'audiooutput');
@@ -126,6 +127,10 @@ export const useRealtimeChat = () => {
       setAudioOutputDevices(audioOutputs);
     } catch (error) {
       console.error('Error getting audio devices:', error);
+    } finally {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
     }
   }, []);
 
@@ -320,18 +325,34 @@ export const useRealtimeChat = () => {
         authorization: apiKey,
         connectionType: 'webrtc',
         clientTools,
+        inputDeviceId: selectedMicId || undefined,
+        outputDeviceId: selectedSpeakerId || undefined,
         overrides: {
           agent: {
             prompt: promptOverride,
             language: (selectedLanguage as any),
           },
         },
+        onConversationCreated: (conversation) => {
+          conversationRef.current = conversation as VoiceConversation;
+          console.log('Conversation created, type:', (conversation as any).type);
+          if (selectedMicId) {
+            conversationRef.current.changeInputDevice({ inputDeviceId: selectedMicId }).catch((err) => {
+              console.error('Failed to set initial input device:', err);
+            });
+          }
+          if (selectedSpeakerId) {
+            conversationRef.current.changeOutputDevice({ outputDeviceId: selectedSpeakerId }).catch((err) => {
+              console.error('Failed to set initial output device:', err);
+            });
+          }
+        },
         onConnect: ({ conversationId }) => {
           console.log('Connected to ElevenLabs agent, conversation ID:', conversationId);
           setIsConnected(true);
           setSessionStartTime(Date.now());
-          // Start polling volume levels from the SDK's built-in analysers
           startVolumePolling();
+          console.log('onConnect: mic device =', selectedMicId, 'speaker device =', selectedSpeakerId);
         },
         onDisconnect: (details) => {
           console.log('Disconnected from ElevenLabs agent:', details);
@@ -342,6 +363,7 @@ export const useRealtimeChat = () => {
           console.error('ElevenLabs conversation error:', message, context);
         },
         onMessage: (props) => {
+          console.log('onMessage:', props);
           const { message, source: role } = props;
           const speaker = role === 'user' ? 'You' : 'Agent';
           setConversationLog(prev => [...prev, { speaker, text: message }]);
@@ -354,6 +376,7 @@ export const useRealtimeChat = () => {
           }
         },
         onModeChange: ({ mode }) => {
+          console.log('onModeChange:', mode);
           if (mode === 'speaking') {
             setLiveAgentTranscript('');
           } else {
@@ -365,9 +388,8 @@ export const useRealtimeChat = () => {
         },
       };
 
-      const conversation = await Conversation.startSession(options);
-      conversationRef.current = conversation as VoiceConversation;
-
+      await Conversation.startSession(options);
+      // conversationRef is already set by onConversationCreated callback
       console.log('=== handleConnect END ===');
     } catch (error) {
       console.error('=== handleConnect ERROR ===');
@@ -379,7 +401,6 @@ export const useRealtimeChat = () => {
     }
   };
 
-  // Runtime microphone switching via the SDK's changeInputDevice
   const handleMicChange = useCallback((micId: string) => {
     setSelectedMicId(micId);
     if (conversationRef.current) {
@@ -389,7 +410,6 @@ export const useRealtimeChat = () => {
     }
   }, []);
 
-  // Runtime speaker switching via the SDK's changeOutputDevice
   const handleSpeakerChange = useCallback((speakerId: string) => {
     setSelectedSpeakerId(speakerId);
     if (conversationRef.current) {
