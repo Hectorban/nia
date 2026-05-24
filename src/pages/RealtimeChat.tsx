@@ -1,10 +1,10 @@
 import { Box, Typography, Alert, Button } from '@mui/material';
 import { useRealtimeChat } from '../hooks/useRealtimeChat';
-import { LiveAudioVisualizer } from 'react-audio-visualize';
 import DeviceSettings from '../components/DeviceSettings';
 import Controls from '../components/Controls';
 import ChatView from '../components/ChatView';
 import SessionCostTracker from '../components/SessionCostTracker';
+import VoiceIndicator from '../components/VoiceIndicator';
 import { useRealtimeSettings } from '../hooks/useRealtimeSettings';
 import { useState, useEffect } from 'react';
 import { MessageInput } from "@chatscope/chat-ui-kit-react";
@@ -23,7 +23,8 @@ const RealtimeChat = () => {
     audioOutputDevices,
     selectedMicId,
     selectedSpeakerId,
-    userMediaRecorder,
+    inputVolume,
+    outputVolume,
     volume,
     isMuted,
     sessionStartTime,
@@ -96,6 +97,7 @@ const RealtimeChat = () => {
             {isConnected && (
               <Box sx={{ textAlign: 'center' }}>
                 <Typography variant="h6" gutterBottom>AI Agent</Typography>
+                <VoiceIndicator volume={outputVolume} width={200} height={75} color="#1976d2" />
                 <Typography variant="body2" color="text.secondary">
                   {liveAgentTranscript ? 'Speaking...' : 'Listening...'}
                 </Typography>
@@ -178,14 +180,10 @@ const RealtimeChat = () => {
 
           {/* User Audio Visualization */}
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 2 }}>
-            {userMediaRecorder && (
+            {isConnected && (
               <Box sx={{ textAlign: 'center' }}>
                 <Typography variant="h6" gutterBottom>You</Typography>
-                <LiveAudioVisualizer
-                  mediaRecorder={userMediaRecorder}
-                  width={200}
-                  height={75}
-                />
+                <VoiceIndicator volume={inputVolume} width={200} height={75} color="#4caf50" />
               </Box>
             )}
           </Box>

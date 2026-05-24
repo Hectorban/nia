@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Conversation, type PartialOptions } from '@elevenlabs/client';
+import { Conversation, type PartialOptions, type VoiceConversation } from '@elevenlabs/client';
 import { getDeviceSettings, saveDeviceSettings, getRealtimeSettings } from '../db';
 import { saveSession } from '../db/sessions';
 import { VTubeStudioService, findBestExpressionMatch } from '../services/vtubeStudio';
@@ -16,15 +16,42 @@ export const useRealtimeChat = () => {
   const [audioOutputDevices, setAudioOutputDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedMicId, setSelectedMicId] = useState('');
   const [selectedSpeakerId, setSelectedSpeakerId] = useState('');
-  const [userMediaRecorder, setUserMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [inputVolume, setInputVolume] = useState<number>(0);
+  const [outputVolume, setOutputVolume] = useState<number>(0);
   const [volume, setVolume] = useState<number>(100);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
   const [vtubeStudioConnected, setVtubeStudioConnected] = useState(false);
 
-  const conversationRef = useRef<Awaited<ReturnType<typeof Conversation.startSession>> | null>(null);
-  const userStream = useRef<MediaStream | null>(null);
+  const conversationRef = useRef<VoiceConversation | null>(null);
+  const volumePollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const vtubeStudioService = useRef<VTubeStudioService | null>(null);
+
+  // Start polling volume levels from the SDK's built-in analysers.
+  // This replaces the old MediaRecorder-based visualizer, avoiding the
+  // dual-mic-stream conflict (Nia's getUserMedia vs LiveKit's mic capture).
+  const startVolumePolling = useCallback(() => {
+    if (volumePollRef.current) return;
+    volumePollRef.current = setInterval(() => {
+      if (conversationRef.current) {
+        try {
+          setInputVolume(conversationRef.current.getInputVolume());
+          setOutputVolume(conversationRef.current.getOutputVolume());
+        } catch {
+          // ignore transient errors during device switches
+        }
+      }
+    }, 80); // ~12fps — smooth enough for a volume bar, cheap on CPU
+  }, []);
+
+  const stopVolumePolling = useCallback(() => {
+    if (volumePollRef.current) {
+      clearInterval(volumePollRef.current);
+      volumePollRef.current = null;
+    }
+    setInputVolume(0);
+    setOutputVolume(0);
+  }, []);
 
   const handleDisconnect = useCallback(async () => {
     console.log('Disconnecting...');
@@ -37,6 +64,9 @@ export const useRealtimeChat = () => {
       await conversationRef.current.endSession();
       conversationRef.current = null;
     }
+
+    // Stop volume polling
+    stopVolumePolling();
 
     // Save session data before fully disconnecting
     if (convStartTime && conversationLog.length > 0 && convId) {
@@ -79,20 +109,12 @@ export const useRealtimeChat = () => {
       }
     }
 
-    if (userMediaRecorder && userMediaRecorder.state !== 'inactive') {
-      userMediaRecorder.stop();
-    }
-    if (userStream.current) {
-      userStream.current.getTracks().forEach(track => track.stop());
-      userStream.current = null;
-    }
-
     setIsConnected(false);
     setLiveUserTranscript('');
     setLiveAgentTranscript('');
     setSessionStartTime(null);
     console.log('Disconnected');
-  }, [userMediaRecorder, sessionStartTime, conversationLog, audioInputDevices, audioOutputDevices, selectedMicId, selectedSpeakerId]);
+  }, [sessionStartTime, conversationLog, audioInputDevices, audioOutputDevices, selectedMicId, selectedSpeakerId, stopVolumePolling]);
 
   const getAudioDevices = useCallback(async () => {
     try {
@@ -278,25 +300,12 @@ export const useRealtimeChat = () => {
       if (!apiKey) throw new Error('ElevenLabs API key is not configured. Please set it in the settings.');
       if (!agentId) throw new Error('ElevenLabs Agent ID is not configured. Please set it in the settings.');
 
-      // Request microphone permission
-      console.log('Getting user media stream...');
-      const ms = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          deviceId: selectedMicId ? { exact: selectedMicId } : undefined,
-        },
-      });
-      console.log('Got media stream');
-      userStream.current = ms;
+      // NOTE: We deliberately do NOT call getUserMedia here anymore.
+      // The ElevenLabs SDK's webSessionSetup() handles microphone permission
+      // and device selection internally via LiveKit's setMicrophoneEnabled().
+      // Getting a separate MediaStream here would lock the mic and prevent
+      // LiveKit from capturing audio for the agent.
 
-      // Set up user media recorder for audio visualization
-      const audioTrack = ms.getAudioTracks()[0];
-      audioTrack.enabled = !isMuted;
-
-      const userRecorder = new MediaRecorder(ms);
-      userRecorder.start();
-      setUserMediaRecorder(userRecorder);
-
-      // Start ElevenLabs conversation
       console.log('Starting ElevenLabs conversation session...');
 
       // Build overrides
@@ -314,7 +323,6 @@ export const useRealtimeChat = () => {
         overrides: {
           agent: {
             prompt: promptOverride,
-            firstMessage: undefined,
             language: (selectedLanguage as any),
           },
         },
@@ -322,10 +330,13 @@ export const useRealtimeChat = () => {
           console.log('Connected to ElevenLabs agent, conversation ID:', conversationId);
           setIsConnected(true);
           setSessionStartTime(Date.now());
+          // Start polling volume levels from the SDK's built-in analysers
+          startVolumePolling();
         },
         onDisconnect: (details) => {
           console.log('Disconnected from ElevenLabs agent:', details);
           setIsConnected(false);
+          stopVolumePolling();
         },
         onError: (message, context) => {
           console.error('ElevenLabs conversation error:', message, context);
@@ -355,7 +366,7 @@ export const useRealtimeChat = () => {
       };
 
       const conversation = await Conversation.startSession(options);
-      conversationRef.current = conversation;
+      conversationRef.current = conversation as VoiceConversation;
 
       console.log('=== handleConnect END ===');
     } catch (error) {
@@ -368,14 +379,26 @@ export const useRealtimeChat = () => {
     }
   };
 
-  const handleMicChange = (micId: string) => setSelectedMicId(micId);
-  const handleSpeakerChange = (speakerId: string) => {
+  // Runtime microphone switching via the SDK's changeInputDevice
+  const handleMicChange = useCallback((micId: string) => {
+    setSelectedMicId(micId);
+    if (conversationRef.current) {
+      conversationRef.current.changeInputDevice({ inputDeviceId: micId }).catch((error) => {
+        console.error('Failed to switch input device:', error);
+      });
+    }
+  }, []);
+
+  // Runtime speaker switching via the SDK's changeOutputDevice
+  const handleSpeakerChange = useCallback((speakerId: string) => {
     setSelectedSpeakerId(speakerId);
     if (conversationRef.current) {
-      // Output device update is handled by the library on start, but for runtime changes
-      // we'd need to check if the Conversation supports dynamic device switching
+      conversationRef.current.changeOutputDevice({ outputDeviceId: speakerId }).catch((error) => {
+        console.error('Failed to switch output device:', error);
+      });
     }
-  };
+  }, []);
+
   const handleVolumeChange = (_event: Event, newValue: number | number[]) => {
     const vol = newValue as number;
     setVolume(vol);
@@ -383,28 +406,36 @@ export const useRealtimeChat = () => {
       conversationRef.current.setVolume({ volume: vol / 100 });
     }
   };
+
   const toggleMute = () => {
     const newMuted = !isMuted;
     setIsMuted(newMuted);
     if (conversationRef.current) {
       conversationRef.current.setMicMuted(newMuted);
     }
-    if (userStream.current) {
-      userStream.current.getAudioTracks().forEach(track => { track.enabled = !newMuted; });
-    }
   };
 
-  // Send text message to the active conversation
+  // Send text message to the active conversation.
+  // Uses conversationRef (not isConnected state) as the primary guard to avoid
+  // race conditions where the ref is set but React hasn't re-rendered yet.
   const sendTextMessage = useCallback((message: string) => {
-    if (!isConnected || !message.trim() || !conversationRef.current) {
-      console.warn('Cannot send message: not connected or empty message');
+    if (!conversationRef.current) {
+      console.warn('Cannot send message: no active conversation');
+      return;
+    }
+    if (!message.trim()) {
+      console.warn('Cannot send message: empty message');
       return;
     }
 
     console.log('Sending text message:', message);
     setConversationLog(prev => [...prev, { speaker: 'You', text: message }]);
+
+    // sendUserMessage is not awaited by the SDK, but the underlying
+    // WebRTC connection's sendMessage is async. Fire-and-forget is fine —
+    // the data channel handles delivery; errors surface via onError.
     conversationRef.current.sendUserMessage(message);
-  }, [isConnected]);
+  }, []);
 
   return {
     isConnected,
@@ -417,7 +448,8 @@ export const useRealtimeChat = () => {
     audioOutputDevices,
     selectedMicId,
     selectedSpeakerId,
-    userMediaRecorder,
+    inputVolume,
+    outputVolume,
     volume,
     isMuted,
     sessionStartTime,
