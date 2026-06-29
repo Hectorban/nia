@@ -43,7 +43,7 @@ export type RealtimeSettings = Pick<Settings,
 /**
  * Gets the database instance, creating it if it doesn't exist.
  */
-async function getDB(): Promise<Database> {
+export async function getDB(): Promise<Database> {
   if (db) {
     return db;
   }

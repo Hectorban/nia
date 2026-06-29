@@ -69,6 +69,40 @@ pub fn run() {
             "#,
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 4,
+            description: "make_model_column_nullable",
+            sql: r#"
+                -- Recreate sessions table with nullable 'model' column.
+                -- SQLite doesn't support ALTER COLUMN, so we use the
+                -- create-copy-drop-rename pattern to preserve existing data.
+                CREATE TABLE sessions_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    start_time INTEGER NOT NULL,
+                    end_time INTEGER NOT NULL,
+                    duration_seconds INTEGER NOT NULL,
+                    model TEXT,
+                    input_audio_tokens INTEGER DEFAULT 0,
+                    output_audio_tokens INTEGER DEFAULT 0,
+                    input_text_tokens INTEGER DEFAULT 0,
+                    output_text_tokens INTEGER DEFAULT 0,
+                    total_cost REAL DEFAULT 0,
+                    mic_device TEXT,
+                    speaker_device TEXT,
+                    agent_id TEXT,
+                    conversation_id TEXT,
+                    created_at INTEGER DEFAULT (strftime('%s', 'now'))
+                );
+
+                INSERT INTO sessions_new SELECT * FROM sessions;
+
+                DROP TABLE sessions;
+                ALTER TABLE sessions_new RENAME TO sessions;
+
+                CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON sessions(created_at DESC);
+            "#,
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

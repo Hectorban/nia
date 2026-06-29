@@ -1,4 +1,4 @@
-import Database from '@tauri-apps/plugin-sql';
+import { getDB } from '../db';
 
 export interface Session {
   id?: number;
@@ -26,7 +26,7 @@ export async function saveSession(
   sessionData: Omit<Session, 'id' | 'created_at'>,
   messages: Omit<Message, 'id' | 'session_id' | 'created_at'>[]
 ): Promise<number> {
-  const db = await Database.load('sqlite:nia.db');
+  const db = await getDB();
 
   try {
     // Start transaction
@@ -42,7 +42,7 @@ export async function saveSession(
         sessionData.start_time,
         sessionData.end_time,
         sessionData.duration_seconds,
-        sessionData.agent_id,
+        null, // model — legacy column, no longer used
         sessionData.agent_id,
         sessionData.conversation_id,
         sessionData.mic_device || null,
@@ -77,7 +77,7 @@ export async function saveSession(
 
 // Get all sessions with basic info
 export async function getAllSessions(): Promise<Session[]> {
-  const db = await Database.load('sqlite:nia.db');
+  const db = await getDB();
   const result = await db.select<Session[]>(
     'SELECT * FROM sessions ORDER BY created_at DESC'
   );
@@ -89,7 +89,7 @@ export async function getSessionWithMessages(sessionId: number): Promise<{
   session: Session;
   messages: Message[];
 } | null> {
-  const db = await Database.load('sqlite:nia.db');
+  const db = await getDB();
 
   const sessionResult = await db.select<Session[]>(
     'SELECT * FROM sessions WHERE id = ?',
@@ -113,7 +113,7 @@ export async function getSessionWithMessages(sessionId: number): Promise<{
 
 // Delete a session (messages will be cascade deleted)
 export async function deleteSession(sessionId: number): Promise<void> {
-  const db = await Database.load('sqlite:nia.db');
+  const db = await getDB();
   await db.execute('DELETE FROM sessions WHERE id = ?', [sessionId]);
 }
 
@@ -124,7 +124,7 @@ export async function getSessionStats(): Promise<{
   averageDuration: number;
   totalMessages: number;
 }> {
-  const db = await Database.load('sqlite:nia.db');
+  const db = await getDB();
 
   const stats = await db.select<any[]>(`
     SELECT 
