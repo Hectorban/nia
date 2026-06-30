@@ -9,6 +9,8 @@ export interface DeviceSettings {
   selectedSpeakerId: string | null;
 }
 
+export type PipelineMode = 'managed' | 'decoupled';
+
 export interface Settings {
   // ElevenLabs
   elevenlabsApiKey?: string;
@@ -20,8 +22,16 @@ export interface Settings {
   volume?: number;
   // App
   darkMode?: boolean;
+  pipelineMode?: PipelineMode;
   // Services
   firecrawlApiKey?: string;
+  openRouterApiKey?: string;
+  // LLM
+  llmModel?: string;
+  // STT overrides
+  elevenlabsSttModel?: string;
+  // TTS overrides
+  elevenlabsTtsModel?: string;
   // Agent overrides
   prompt?: string;
   language?: string;
@@ -35,8 +45,13 @@ export type RealtimeSettings = Pick<Settings,
   | 'elevenlabsAgentId'
   | 'elevenlabsVoiceId'
   | 'firecrawlApiKey'
+  | 'openRouterApiKey'
+  | 'llmModel'
+  | 'elevenlabsSttModel'
+  | 'elevenlabsTtsModel'
   | 'prompt'
   | 'language'
+  | 'pipelineMode'
   | 'darkMode'
 >;
 
@@ -74,6 +89,11 @@ export async function getSettings(): Promise<Settings> {
       else if (row.key === 'language') settings.language = row.value;
       else if (row.key === 'vtubeStudioAuthAccepted') settings.vtubeStudioAuthAccepted = JSON.parse(row.value);
       else if (row.key === 'vtubeStudioAuthToken') settings.vtubeStudioAuthToken = row.value;
+      else if (row.key === 'pipelineMode') settings.pipelineMode = row.value as PipelineMode;
+      else if (row.key === 'openRouterApiKey') settings.openRouterApiKey = row.value;
+      else if (row.key === 'llmModel') settings.llmModel = row.value;
+      else if (row.key === 'elevenlabsSttModel') settings.elevenlabsSttModel = row.value;
+      else if (row.key === 'elevenlabsTtsModel') settings.elevenlabsTtsModel = row.value;
     } catch (error) {
       console.error(`Failed to parse setting ${row.key}:`, error);
     }
@@ -137,8 +157,13 @@ export async function getRealtimeSettings(): Promise<RealtimeSettings | null> {
       elevenlabsAgentId: settings.elevenlabsAgentId || '',
       elevenlabsVoiceId: settings.elevenlabsVoiceId,
       firecrawlApiKey: settings.firecrawlApiKey,
+      openRouterApiKey: settings.openRouterApiKey,
+      llmModel: settings.llmModel || 'anthropic/claude-sonnet-4',
+      elevenlabsSttModel: settings.elevenlabsSttModel || 'scribe_v2_realtime',
+      elevenlabsTtsModel: settings.elevenlabsTtsModel || 'eleven_flash_v2_5',
       prompt: settings.prompt,
       language: settings.language || 'es',
+      pipelineMode: settings.pipelineMode || 'managed',
       darkMode: settings.darkMode || false,
     };
   }

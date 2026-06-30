@@ -5,6 +5,27 @@ import { saveSession } from '../db/sessions';
 import { VTubeStudioService, findBestExpressionMatch } from '../services/vtubeStudio';
 import { FirecrawlService } from '../services/firecrawl';
 
+// Decoupled pipeline imports
+import { Pipeline } from '../pipeline/Pipeline';
+import { MicSource } from '../pipeline/transport/MicSource';
+import { SpeakerSink } from '../pipeline/transport/SpeakerSink';
+import { RMSVAD } from '../pipeline/vad/RMSVAD';
+import { InterruptionController } from '../pipeline/vad/InterruptionController';
+import { ElevenLabsSTT } from '../pipeline/services/stt/ElevenLabsSTT';
+import { OpenRouterLLM } from '../pipeline/services/llm/OpenRouterLLM';
+import { ElevenLabsTTS } from '../pipeline/services/tts/ElevenLabsTTS';
+import { createContextAggregator } from '../pipeline/ContextAggregator';
+import { ToolRegistry } from '../pipeline/agent/ToolRegistry';
+import { ToolDispatcher } from '../pipeline/agent/ToolDispatcher';
+import { AgentContext } from '../pipeline/agent/AgentContext';
+import {
+  createChangeExpressionTool,
+  createTriggerEmotionTool,
+  createFetchUrlTool,
+  createScreenshotUrlTool,
+} from '../pipeline/agent/tools/index';
+import { type Frame, FrameDirection, transcription } from '../pipeline/frames';
+
 export const useRealtimeChat = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [conversationLog, setConversationLog] = useState<{ speaker: 'You' | 'Agent'; text: string }[]>([]);
@@ -26,6 +47,14 @@ export const useRealtimeChat = () => {
   const conversationRef = useRef<VoiceConversation | null>(null);
   const volumePollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const vtubeStudioService = useRef<VTubeStudioService | null>(null);
+
+  // Decoupled pipeline refs
+  const pipelineRef = useRef<Pipeline | null>(null);
+  const micSourceRef = useRef<MicSource | null>(null);
+  const speakerSinkRef = useRef<SpeakerSink | null>(null);
+  const toolDispatcherRef = useRef<ToolDispatcher | null>(null);
+  const agentContextRef = useRef<AgentContext | null>(null);
+  const pipelineModeRef = useRef<'managed' | 'decoupled'>('managed');
 
   // Start polling volume levels from the SDK's built-in analysers.
   // This replaces the old MediaRecorder-based visualizer, avoiding the
@@ -56,6 +85,57 @@ export const useRealtimeChat = () => {
   const handleDisconnect = useCallback(async () => {
     console.log('Disconnecting...');
 
+    if (pipelineModeRef.current === 'decoupled') {
+      // Decoupled mode cleanup
+      const p = pipelineRef.current;
+      if (p) {
+        await p.stop();
+        pipelineRef.current = null;
+      }
+      micSourceRef.current = null;
+      speakerSinkRef.current = null;
+      toolDispatcherRef.current = null;
+      agentContextRef.current = null;
+
+      // Save session data
+      if (sessionStartTime && conversationLog.length > 0) {
+        try {
+          const endTime = Date.now();
+          const durationSeconds = Math.floor((endTime - sessionStartTime) / 1000);
+          const micDevice = audioInputDevices.find(d => d.deviceId === selectedMicId)?.label || 'Default Microphone';
+          const speakerDevice = audioOutputDevices.find(d => d.deviceId === selectedSpeakerId)?.label || 'Default Speaker';
+          const messages = conversationLog.map((msg, index) => ({
+            speaker: msg.speaker,
+            text: msg.text,
+            timestamp: sessionStartTime + (index * 1000),
+          }));
+          await saveSession(
+            {
+              start_time: sessionStartTime,
+              end_time: endTime,
+              duration_seconds: durationSeconds,
+              agent_id: 'decoupled',
+              conversation_id: `decoupled-${sessionStartTime}`,
+              mic_device: micDevice,
+              speaker_device: speakerDevice,
+            },
+            messages
+          );
+          console.log('Session saved successfully');
+        } catch (error) {
+          console.error('Error saving session:', error);
+        }
+      }
+
+      setIsConnected(false);
+      setLiveUserTranscript('');
+      setLiveAgentTranscript('');
+      setSessionStartTime(null);
+      console.log('Disconnected (decoupled)');
+      return;
+    }
+
+    // Managed mode cleanup (existing)
     const convId = conversationRef.current?.getId();
     const convStartTime = sessionStartTime;
 
@@ -297,8 +377,148 @@ export const useRealtimeChat = () => {
         return;
       }
 
-      console.log('Getting ElevenLabs settings...');
+      console.log('Getting settings...');
       const settings = await getRealtimeSettings();
+
+      // === Decoupled mode ===
+      if (settings?.pipelineMode === 'decoupled') {
+        const apiKey = settings.elevenlabsApiKey;
+        const voiceId = settings.elevenlabsVoiceId;
+        const openRouterKey = settings.openRouterApiKey;
+        const llmModel = settings.llmModel || 'anthropic/claude-sonnet-4';
+
+        if (!apiKey) throw new Error('ElevenLabs API key is required for decoupled mode');
+        if (!openRouterKey) throw new Error('OpenRouter API key is required for decoupled mode');
+        if (!voiceId) throw new Error('ElevenLabs voice ID is required for decoupled mode');
+
+        pipelineModeRef.current = 'decoupled';
+
+        // Create tools registry with existing tools
+        const toolRegistry = new ToolRegistry();
+        const vtubeService = VTubeStudioService.getInstance();
+        const vtubeConnected = vtubeStudioConnected;
+        toolRegistry.register(createChangeExpressionTool(vtubeService, () => vtubeConnected));
+        toolRegistry.register(createTriggerEmotionTool(vtubeService, () => vtubeConnected));
+        toolRegistry.register(createFetchUrlTool(() => settings.firecrawlApiKey));
+        toolRegistry.register(createScreenshotUrlTool(() => settings.firecrawlApiKey));
+
+        const toolDispatcher = new ToolDispatcher(toolRegistry);
+        toolDispatcherRef.current = toolDispatcher;
+
+        const { user: ctxUser, assistant: ctxAssistant, context } = createContextAggregator();
+
+        const agentContext = new AgentContext({
+          name: 'Nia',
+          systemPrompt: settings.prompt || undefined,
+          language: settings.language || 'es',
+          model: llmModel,
+        });
+        agentContextRef.current = agentContext;
+
+        // Build pipeline components
+        const micSource = new MicSource({ deviceId: selectedMicId });
+        micSourceRef.current = micSource;
+
+        const speakerSink = new SpeakerSink({
+          deviceId: selectedSpeakerId || undefined,
+          sampleRate: 44100,
+        });
+        speakerSinkRef.current = speakerSink;
+
+        const rmsVad = new RMSVAD();
+        const stt = new ElevenLabsSTT({
+          apiKey,
+          modelId: settings.elevenlabsSttModel || 'scribe_v2_realtime',
+          languageCode: settings.language || 'es',
+        });
+        const llm = new OpenRouterLLM(
+          {
+            apiKey: openRouterKey,
+            model: llmModel,
+            systemPrompt: settings.prompt,
+            tools: toolRegistry.toToolDefinitions(),
+            onToolCall: async (name, args) => toolDispatcher.executeTool(name, args),
+          },
+          context,
+        );
+        const tts = new ElevenLabsTTS({
+          apiKey,
+          voiceId,
+          modelId: settings.elevenlabsTtsModel || 'eleven_flash_v2_5',
+        });
+
+        const interruptionController = new InterruptionController({
+          onInterrupt: () => { pipeline.interrupt(); },
+        });
+
+        // Build the pipeline
+        const pipeline = new Pipeline([
+          micSource,
+          rmsVad,
+          stt,
+          ctxUser,
+          interruptionController,
+          llm,
+          tts,
+          ctxAssistant,
+          speakerSink,
+        ]);
+
+        // Wire output sink
+        pipeline.sink.onFrame = (frame: Frame, direction: FrameDirection) => {
+          if (direction !== FrameDirection.Downstream) return;
+          switch (frame.kind) {
+            case 'transcription': {
+              const tf = frame as import('../pipeline/frames').TranscriptionFrame;
+              if (tf.isFinal) {
+                setConversationLog(prev => [...prev, { speaker: 'You', text: tf.text }]);
+                setLastUserTranscript(tf.text);
+                setTimeout(() => setLiveUserTranscript(''), 500);
+              } else {
+                setLiveUserTranscript(tf.text);
+              }
+              break;
+            }
+            case 'llm-text': {
+              const lf = frame as import('../pipeline/frames').LLMTextFrame;
+              setLiveAgentTranscript(prev => prev + lf.text);
+              break;
+            }
+            case 'llm-full-response': {
+              const lf = frame as import('../pipeline/frames').LLMFullResponseFrame;
+              setConversationLog(prev => [...prev, { speaker: 'Agent', text: lf.text }]);
+              setLastAgentTranscript(lf.text);
+              break;
+            }
+            case 'error': {
+              const ef = frame as import('../pipeline/frames').ErrorFrame;
+              console.error('Pipeline error:', ef.error);
+              break;
+            }
+          }
+        };
+
+        pipelineRef.current = pipeline;
+
+        // Start the pipeline
+        await pipeline.start();
+
+        // Start volume polling from MicSource
+        if (volumePollRef.current) clearInterval(volumePollRef.current);
+        volumePollRef.current = setInterval(() => {
+          if (micSourceRef.current) {
+            setInputVolume(micSourceRef.current.getVolume());
+          }
+        }, 80);
+
+        setIsConnected(true);
+        setSessionStartTime(Date.now());
+        console.log('Decoupled pipeline started');
+        return;
+      }
+
+      // === Managed mode (existing) ===
+      console.log('Getting ElevenLabs settings...');
       const apiKey = settings?.elevenlabsApiKey;
       const agentId = settings?.elevenlabsAgentId;
 
@@ -403,7 +623,9 @@ export const useRealtimeChat = () => {
 
   const handleMicChange = useCallback((micId: string) => {
     setSelectedMicId(micId);
-    if (conversationRef.current) {
+    if (pipelineModeRef.current === 'decoupled') {
+      micSourceRef.current?.changeDevice(micId);
+    } else if (conversationRef.current) {
       conversationRef.current.changeInputDevice({ inputDeviceId: micId }).catch((error) => {
         console.error('Failed to switch input device:', error);
       });
@@ -412,7 +634,9 @@ export const useRealtimeChat = () => {
 
   const handleSpeakerChange = useCallback((speakerId: string) => {
     setSelectedSpeakerId(speakerId);
-    if (conversationRef.current) {
+    if (pipelineModeRef.current === 'decoupled') {
+      speakerSinkRef.current?.changeDevice(speakerId);
+    } else if (conversationRef.current) {
       conversationRef.current.changeOutputDevice({ outputDeviceId: speakerId }).catch((error) => {
         console.error('Failed to switch output device:', error);
       });
@@ -422,7 +646,9 @@ export const useRealtimeChat = () => {
   const handleVolumeChange = (_event: Event, newValue: number | number[]) => {
     const vol = newValue as number;
     setVolume(vol);
-    if (conversationRef.current) {
+    if (pipelineModeRef.current === 'decoupled') {
+      speakerSinkRef.current?.setVolume(vol / 100);
+    } else if (conversationRef.current) {
       conversationRef.current.setVolume({ volume: vol / 100 });
     }
   };
@@ -430,21 +656,43 @@ export const useRealtimeChat = () => {
   const toggleMute = () => {
     const newMuted = !isMuted;
     setIsMuted(newMuted);
-    if (conversationRef.current) {
+    if (pipelineModeRef.current === 'decoupled') {
+      // Mute by disabling the mic track
+      // For MicSource we can't easily mute mid-stream without reconnect;
+      // this is a simplified mute that just flags the state.
+      console.log('Mute toggled in decoupled mode:', newMuted);
+      // TODO: Proper mic mute in decoupled mode — may need to stop/start MicSource
+    } else if (conversationRef.current) {
       conversationRef.current.setMicMuted(newMuted);
     }
   };
 
   // Send text message to the active conversation.
-  // Uses conversationRef (not isConnected state) as the primary guard to avoid
-  // race conditions where the ref is set but React hasn't re-rendered yet.
+  // For managed mode: uses conversationRef (not isConnected state) as the primary guard.
+  // For decoupled mode: injects a TranscriptionFrame(isFinal=true) into the pipeline.
   const sendTextMessage = useCallback((message: string) => {
-    if (!conversationRef.current) {
-      console.warn('Cannot send message: no active conversation');
-      return;
-    }
     if (!message.trim()) {
       console.warn('Cannot send message: empty message');
+      return;
+    }
+
+    if (pipelineModeRef.current === 'decoupled') {
+      if (!pipelineRef.current) {
+        console.warn('Cannot send message: no active pipeline');
+        return;
+      }
+      console.log('Sending text message (decoupled):', message);
+      setConversationLog(prev => [...prev, { speaker: 'You', text: message }]);
+      // Inject a final TranscriptionFrame to trigger the LLM
+      pipelineRef.current.pushFrame(
+        transcription(message, true),
+        FrameDirection.Downstream,
+      );
+      return;
+    }
+
+    if (!conversationRef.current) {
+      console.warn('Cannot send message: no active conversation');
       return;
     }
 

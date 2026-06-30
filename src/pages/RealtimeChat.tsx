@@ -49,7 +49,11 @@ const RealtimeChat = () => {
   };
 
   useEffect(() => {
-    setShowKeyWarning(!settings?.elevenlabsApiKey || !settings?.elevenlabsAgentId);
+    if (settings?.pipelineMode === 'decoupled') {
+      setShowKeyWarning(!settings?.elevenlabsApiKey || !settings?.openRouterApiKey || !settings?.elevenlabsVoiceId);
+    } else {
+      setShowKeyWarning(!settings?.elevenlabsApiKey || !settings?.elevenlabsAgentId);
+    }
   }, [settings]);
 
   return (
@@ -69,7 +73,9 @@ const RealtimeChat = () => {
             </Button>
           }
         >
-          ElevenLabs API key or Agent ID is not configured. Please set them in the configuration to use the chat.
+          {settings?.pipelineMode === 'decoupled'
+            ? 'ElevenLabs API key or OpenRouter API key is not configured. Please set them in the configuration to use the chat.'
+            : 'ElevenLabs API key or Agent ID is not configured. Please set them in the configuration to use the chat.'}
         </Alert>
       )}
       

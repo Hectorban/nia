@@ -17,6 +17,7 @@ import {
 import { PlayArrow, Stop } from '@mui/icons-material';
 import { useSettings } from '../hooks/useSettings';
 import { ElevenLabsService, ElevenLabsVoice } from '../services/elevenlabs';
+import type { PipelineMode } from '../db';
 
 export const Configuration: React.FC = () => {
   const { settings, updateSettings } = useSettings();
@@ -33,6 +34,11 @@ export const Configuration: React.FC = () => {
   const [isTestingVoice, setIsTestingVoice] = useState(false);
   const [testError, setTestError] = useState<string | null>(null);
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
+  const [pipelineMode, setPipelineMode] = useState<PipelineMode>('managed');
+  const [openRouterApiKey, setOpenRouterApiKey] = useState('');
+  const [llmModel, setLlmModel] = useState('');
+  const [elevenlabsSttModel, setElevenlabsSttModel] = useState('');
+  const [elevenlabsTtsModel, setElevenlabsTtsModel] = useState('');
 
   useEffect(() => {
     if (settings) {
@@ -43,6 +49,11 @@ export const Configuration: React.FC = () => {
       setElevenlabsVoiceId(settings.elevenlabsVoiceId || '');
       setLanguage(settings.language || 'es');
       setPrompt(settings.prompt || '');
+      setPipelineMode(settings.pipelineMode || 'managed');
+      setOpenRouterApiKey(settings.openRouterApiKey || '');
+      setLlmModel(settings.llmModel || '');
+      setElevenlabsSttModel(settings.elevenlabsSttModel || '');
+      setElevenlabsTtsModel(settings.elevenlabsTtsModel || '');
     }
   }, [settings]);
 
@@ -55,6 +66,11 @@ export const Configuration: React.FC = () => {
       elevenlabsVoiceId,
       language,
       prompt,
+      pipelineMode,
+      openRouterApiKey,
+      llmModel: llmModel || undefined,
+      elevenlabsSttModel: elevenlabsSttModel || undefined,
+      elevenlabsTtsModel: elevenlabsTtsModel || undefined,
     });
   };
 
@@ -167,6 +183,25 @@ export const Configuration: React.FC = () => {
             label="Dark Mode"
           />
 
+          {/* Pipeline Mode */}
+          <Stack direction="row" spacing={2} alignItems="center">
+            <Typography variant="body2">Pipeline Mode:</Typography>
+            <Button
+              variant={pipelineMode === 'managed' ? 'contained' : 'outlined'}
+              size="small"
+              onClick={() => setPipelineMode('managed')}
+            >
+              Managed (ElevenLabs Agent)
+            </Button>
+            <Button
+              variant={pipelineMode === 'decoupled' ? 'contained' : 'outlined'}
+              size="small"
+              onClick={() => setPipelineMode('decoupled')}
+            >
+              Decoupled (Custom Pipeline)
+            </Button>
+          </Stack>
+
           {/* ElevenLabs API Key */}
           <TextField
             id="elevenlabsApiKey"
@@ -180,17 +215,19 @@ export const Configuration: React.FC = () => {
             helperText="Required for voice conversations. Get your key from elevenlabs.io"
           />
 
-          {/* Agent ID */}
-          <TextField
-            id="elevenlabsAgentId"
-            label="ElevenLabs Agent ID"
-            value={elevenlabsAgentId}
-            onChange={(e) => setElevenlabsAgentId(e.target.value)}
-            fullWidth
-            variant="outlined"
-            size="small"
-            helperText="Find this in your agent dashboard on elevenlabs.io"
-          />
+          {/* Agent ID — only needed for managed mode */}
+          {pipelineMode === 'managed' && (
+            <TextField
+              id="elevenlabsAgentId"
+              label="ElevenLabs Agent ID"
+              value={elevenlabsAgentId}
+              onChange={(e) => setElevenlabsAgentId(e.target.value)}
+              fullWidth
+              variant="outlined"
+              size="small"
+              helperText="Find this in your agent dashboard on elevenlabs.io"
+            />
+          )}
 
           {/* Language Selection */}
           <FormControl fullWidth size="small">
@@ -290,6 +327,56 @@ export const Configuration: React.FC = () => {
             size="small"
             helperText="Required for AI to read web links. Get your key from firecrawl.dev"
           />
+
+          {/* Decoupled mode fields */}
+          {pipelineMode === 'decoupled' && (
+            <>
+              <TextField
+                id="openRouterApiKey"
+                label="OpenRouter API Key"
+                type="password"
+                value={openRouterApiKey}
+                onChange={(e) => setOpenRouterApiKey(e.target.value)}
+                fullWidth
+                variant="outlined"
+                size="small"
+                helperText="Required for the LLM in decoupled mode. Get your key from openrouter.ai"
+              />
+              <TextField
+                id="llmModel"
+                label="LLM Model"
+                value={llmModel}
+                onChange={(e) => setLlmModel(e.target.value)}
+                fullWidth
+                variant="outlined"
+                size="small"
+                placeholder="anthropic/claude-sonnet-4"
+                helperText="e.g. anthropic/claude-sonnet-4, openai/gpt-4o, deepseek/deepseek-v4-flash"
+              />
+              <TextField
+                id="elevenlabsSttModel"
+                label="STT Model (ElevenLabs)"
+                value={elevenlabsSttModel}
+                onChange={(e) => setElevenlabsSttModel(e.target.value)}
+                fullWidth
+                variant="outlined"
+                size="small"
+                placeholder="scribe_v2_realtime"
+                helperText="Default: scribe_v2_realtime"
+              />
+              <TextField
+                id="elevenlabsTtsModel"
+                label="TTS Model (ElevenLabs)"
+                value={elevenlabsTtsModel}
+                onChange={(e) => setElevenlabsTtsModel(e.target.value)}
+                fullWidth
+                variant="outlined"
+                size="small"
+                placeholder="eleven_flash_v2_5"
+                helperText="Default: eleven_flash_v2_5"
+              />
+            </>
+          )}
 
           {/* System Prompt */}
           <TextField
