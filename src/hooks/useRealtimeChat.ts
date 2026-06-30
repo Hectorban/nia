@@ -43,6 +43,7 @@ export const useRealtimeChat = () => {
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
   const [vtubeStudioConnected, setVtubeStudioConnected] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
   const conversationRef = useRef<VoiceConversation | null>(null);
   const volumePollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -200,6 +201,7 @@ export const useRealtimeChat = () => {
     let stream: MediaStream | null = null;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setConnectionError(null);
       const devices = await navigator.mediaDevices.enumerateDevices();
       const audioInputs = devices.filter(device => device.kind === 'audioinput');
       const audioOutputs = devices.filter(device => device.kind === 'audiooutput');
@@ -207,6 +209,13 @@ export const useRealtimeChat = () => {
       setAudioOutputDevices(audioOutputs);
     } catch (error) {
       console.error('Error getting audio devices:', error);
+      // On Linux (X11/i3), the browser may not have mic permission yet
+      const errMsg = error instanceof Error ? error.message : 'Unknown error';
+      if (errMsg.includes('NotAllowedError') || errMsg.includes('not allowed') || errMsg.includes('permission')) {
+        setConnectionError('Microphone access denied. Please grant microphone permission in your browser or system settings, then reload.');
+      } else {
+        setConnectionError(`Could not access microphone: ${errMsg}`);
+      }
     } finally {
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
@@ -371,6 +380,7 @@ export const useRealtimeChat = () => {
 
   const handleConnect = async () => {
     console.log('=== handleConnect START ===');
+    setConnectionError(null);
     try {
       if (!selectedMicId) {
         console.log('No microphone selected, returning');
@@ -614,8 +624,12 @@ export const useRealtimeChat = () => {
     } catch (error) {
       console.error('=== handleConnect ERROR ===');
       console.error('Error connecting:', error);
-      if (error instanceof Error) {
-        console.error('Error message:', error.message);
+      const msg = error instanceof Error ? error.message : 'Unknown connection error';
+      // Decoupled mode MicSource.start() or managed mode start errors
+      if (msg.includes('NotAllowedError') || msg.includes('permission') || msg.includes('Permission denied')) {
+        setConnectionError('Microphone access denied. Please grant microphone permission in your browser or system settings, then reload.');
+      } else {
+        setConnectionError(msg);
       }
       handleDisconnect();
     }
@@ -717,6 +731,7 @@ export const useRealtimeChat = () => {
     volume,
     isMuted,
     sessionStartTime,
+    connectionError,
     handleMicChange,
     handleSpeakerChange,
     handleVolumeChange,

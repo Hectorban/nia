@@ -55,15 +55,22 @@ export class MicSource extends FrameProcessor {
     );
 
     // 3. Get the microphone stream.
-    this.mediaStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        deviceId: this.options.deviceId ? { exact: this.options.deviceId } : undefined,
-        echoCancellation: this.options.echoCancellation,
-        noiseSuppression: this.options.noiseSuppression,
-        autoGainControl: this.options.autoGainControl,
-        channelCount: 1,
-      },
-    });
+    try {
+      this.mediaStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          deviceId: this.options.deviceId ? { exact: this.options.deviceId } : undefined,
+          echoCancellation: this.options.echoCancellation,
+          noiseSuppression: this.options.noiseSuppression,
+          autoGainControl: this.options.autoGainControl,
+          channelCount: 1,
+        },
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new Error(
+        `Microphone access denied: ${message}. Please grant microphone permission in your browser or system settings and reload.`,
+      );
+    }
 
     // 4. Create the worklet node.
     this.workletNode = new AudioWorkletNode(

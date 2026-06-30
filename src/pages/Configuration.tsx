@@ -28,6 +28,7 @@ export const Configuration: React.FC = () => {
   const [elevenlabsVoiceId, setElevenlabsVoiceId] = useState('');
   const [elevenlabsVoices, setElevenlabsVoices] = useState<ElevenLabsVoice[]>([]);
   const [isLoadingVoices, setIsLoadingVoices] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
   const [elevenlabsService] = useState(new ElevenLabsService());
   const [language, setLanguage] = useState('es');
   const [prompt, setPrompt] = useState('');
@@ -84,6 +85,7 @@ export const Configuration: React.FC = () => {
     }
 
     setIsLoadingVoices(true);
+    setVoiceError(null);
     try {
       elevenlabsService.setApiKey(elevenlabsApiKey);
       const voices = await elevenlabsService.getVoices();
@@ -91,6 +93,13 @@ export const Configuration: React.FC = () => {
       setElevenlabsVoices(voices);
     } catch (error) {
       console.error('Failed to load ElevenLabs voices:', error);
+      const message = error instanceof Error ? error.message : 'Failed to load voices';
+      // Make permission errors more user-friendly
+      if (message.includes('missing_permissions') || message.includes('voices_read')) {
+        setVoiceError('API key is missing the "Voices - Read" permission. Update it in your ElevenLabs API keys settings.');
+      } else {
+        setVoiceError(message);
+      }
       setElevenlabsVoices([]);
     } finally {
       setIsLoadingVoices(false);
@@ -287,6 +296,11 @@ export const Configuration: React.FC = () => {
                 )}
               </Select>
             </FormControl>
+            {voiceError && (
+              <Typography variant="caption" color="error" sx={{ mt: 1, display: 'block' }}>
+                {voiceError}
+              </Typography>
+            )}
             <Box sx={{ display: 'flex', alignItems: 'center', mt: 1, gap: 1 }}>
               <Button
                 variant="outlined"

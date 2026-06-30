@@ -28,6 +28,7 @@ const RealtimeChat = () => {
     volume,
     isMuted,
     sessionStartTime,
+    connectionError,
     handleMicChange,
     handleSpeakerChange,
     handleVolumeChange,
@@ -76,6 +77,17 @@ const RealtimeChat = () => {
           {settings?.pipelineMode === 'decoupled'
             ? 'ElevenLabs API key or OpenRouter API key is not configured. Please set them in the configuration to use the chat.'
             : 'ElevenLabs API key or Agent ID is not configured. Please set them in the configuration to use the chat.'}
+        </Alert>
+      )}
+      
+      {/* Microphone Permission Error */}
+      {connectionError && (
+        <Alert 
+          severity="error" 
+          sx={{ m: 2, mb: 0 }}
+          onClose={() => {}} // keep visible until permission is granted
+        >
+          {connectionError}
         </Alert>
       )}
       
