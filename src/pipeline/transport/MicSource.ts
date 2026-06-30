@@ -30,6 +30,7 @@ export class MicSource extends FrameProcessor {
   private sourceNode: MediaStreamAudioSourceNode | null = null;
   private options: MicSourceOptions;
   private volume = 0;
+  private muted = false;
 
   constructor(options: MicSourceOptions = {}) {
     super();
@@ -113,6 +114,24 @@ export class MicSource extends FrameProcessor {
   /** Current mic level (0–1) for UI visualization. */
   getVolume(): number {
     return this.volume;
+  }
+
+  /** Mute/unmute the microphone by enabling/disabling the audio track. */
+  setMuted(muted: boolean): void {
+    this.muted = muted;
+    if (this.mediaStream) {
+      this.mediaStream.getAudioTracks().forEach((track) => {
+        track.enabled = !muted;
+      });
+    }
+    if (muted) {
+      this.volume = 0;
+    }
+  }
+
+  /** Whether the microphone is currently muted. */
+  isMuted(): boolean {
+    return this.muted;
   }
 
   private updateVolume(pcmBuffer: ArrayBuffer): void {

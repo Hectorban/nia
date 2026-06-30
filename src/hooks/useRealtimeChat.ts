@@ -657,11 +657,7 @@ export const useRealtimeChat = () => {
     const newMuted = !isMuted;
     setIsMuted(newMuted);
     if (pipelineModeRef.current === 'decoupled') {
-      // Mute by disabling the mic track
-      // For MicSource we can't easily mute mid-stream without reconnect;
-      // this is a simplified mute that just flags the state.
-      console.log('Mute toggled in decoupled mode:', newMuted);
-      // TODO: Proper mic mute in decoupled mode — may need to stop/start MicSource
+      micSourceRef.current?.setMuted(newMuted);
     } else if (conversationRef.current) {
       conversationRef.current.setMicMuted(newMuted);
     }
